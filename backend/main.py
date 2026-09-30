@@ -9,9 +9,7 @@ import secrets
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
-from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode
-from urllib.request import Request as URLRequest, urlopen
 
 import mysql.connector
 from dotenv import load_dotenv
@@ -506,162 +504,37 @@ def conectar_banco():
     return mysql.connector.connect(**options)
 
 
-def enviar_notificacao_whatsapp_reserva(
-    agendamento_id,
+def criar_link_whatsapp_reserva(
+    whatsapp_responsavel,
     nome_cliente,
     contato_cliente,
     nome_quadra,
     data_reserva,
     horario_reserva
 ):
-    configuracao = {
-        "WHATSAPP_ACCESS_TOKEN": os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip(),
-        "WHATSAPP_PHONE_NUMBER_ID": os.getenv(
-            "WHATSAPP_PHONE_NUMBER_ID", ""
-        ).strip(),
-        "WHATSAPP_AGENT_PHONE": os.getenv("WHATSAPP_AGENT_PHONE", "").strip(),
-        "WHATSAPP_TEMPLATE_NAME": os.getenv(
-            "WHATSAPP_TEMPLATE_NAME", ""
-        ).strip(),
-        "WHATSAPP_GRAPH_API_VERSION": os.getenv(
-            "WHATSAPP_GRAPH_API_VERSION", ""
-        ).strip(),
-    }
-    configurada = [bool(valor) for valor in configuracao.values()]
-    if not any(configurada):
-        return "desativada"
-
-    faltantes = [
-        chave
-        for chave, valor in configuracao.items()
-        if not valor
-    ]
-    if faltantes:
-        logger.error(
-            "Notificação WhatsApp da reserva %s não enviada: "
-            "configuração incompleta (%s).",
-            agendamento_id,
-            ", ".join(faltantes)
-        )
-        return "falhou"
-
-    telefone_agente = re.sub(
-        r"\D",
-        "",
-        configuracao["WHATSAPP_AGENT_PHONE"]
+    telefone_original = str(whatsapp_responsavel or "").strip()
+    telefone = re.sub(r"\D", "", telefone_original)
+    codigo_internacional = (
+        telefone_original.startswith("+")
+        or telefone_original.startswith("00")
     )
-    if not 10 <= len(telefone_agente) <= 15:
-        logger.error(
-            "Notificação WhatsApp da reserva %s não enviada: "
-            "WHATSAPP_AGENT_PHONE deve incluir o código do país.",
-            agendamento_id
-        )
-        return "falhou"
+    if telefone.startswith("00"):
+        telefone = telefone[2:]
+        codigo_internacional = True
+    if not codigo_internacional and len(telefone) in (10, 11):
+        telefone = f"55{telefone}"
+    if not 10 <= len(telefone) <= 15:
+        return None
 
-    if not configuracao["WHATSAPP_PHONE_NUMBER_ID"].isdigit():
-        logger.error(
-            "Notificação WhatsApp da reserva %s não enviada: "
-            "WHATSAPP_PHONE_NUMBER_ID inválido.",
-            agendamento_id
-        )
-        return "falhou"
-
-    versao_api = configuracao["WHATSAPP_GRAPH_API_VERSION"]
-    if not re.fullmatch(r"v\d+\.\d+", versao_api):
-        logger.error(
-            "Notificação WhatsApp da reserva %s não enviada: "
-            "WHATSAPP_GRAPH_API_VERSION inválida.",
-            agendamento_id
-        )
-        return "falhou"
-
-    if any(
-        caractere in configuracao["WHATSAPP_ACCESS_TOKEN"]
-        for caractere in ("\r", "\n")
-    ):
-        logger.error(
-            "Notificação WhatsApp da reserva %s não enviada: "
-            "WHATSAPP_ACCESS_TOKEN inválido.",
-            agendamento_id
-        )
-        return "falhou"
-
-    template = {
-        "name": configuracao["WHATSAPP_TEMPLATE_NAME"],
-        "language": {
-            "code": os.getenv("WHATSAPP_TEMPLATE_LANGUAGE", "pt_BR").strip()
-            or "pt_BR"
-        },
-        "components": [
-            {
-                "type": "body",
-                "parameters": [
-                    {"type": "text", "text": str(nome_cliente)},
-                    {"type": "text", "text": str(contato_cliente)},
-                    {"type": "text", "text": str(nome_quadra)},
-                    {
-                        "type": "text",
-                        "text": data_reserva.strftime("%d/%m/%Y")
-                    },
-                    {
-                        "type": "text",
-                        "text": horario_reserva.strftime("%H:%M")
-                    },
-                ],
-            }
-        ],
-    }
-    payload = json.dumps(
-        {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": telefone_agente,
-            "type": "template",
-            "template": template,
-        },
-        ensure_ascii=False
-    ).encode("utf-8")
-    requisicao = URLRequest(
-        (
-            "https://graph.facebook.com/"
-            f"{versao_api}/{configuracao['WHATSAPP_PHONE_NUMBER_ID']}/messages"
-        ),
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {configuracao['WHATSAPP_ACCESS_TOKEN']}",
-            "Content-Type": "application/json",
-        },
-        method="POST"
+    mensagem = (
+        "Olá! Gostaria de solicitar uma reserva no Bosque Esportes.\n"
+        f"Quadra: {nome_quadra}\n"
+        f"Data: {data_reserva.strftime('%d/%m/%Y')}\n"
+        f"Horário: {horario_reserva.strftime('%H:%M')}\n"
+        f"Nome: {nome_cliente}\n"
+        f"WhatsApp: {contato_cliente}"
     )
-
-    try:
-        with urlopen(requisicao, timeout=8) as resposta:
-            if not 200 <= resposta.status < 300:
-                logger.error(
-                    "API do WhatsApp recusou a notificação da reserva %s "
-                    "com HTTP %s.",
-                    agendamento_id,
-                    resposta.status
-                )
-                return "falhou"
-    except HTTPError as erro:
-        logger.error(
-            "API do WhatsApp recusou a notificação da reserva %s "
-            "com HTTP %s.",
-            agendamento_id,
-            erro.code
-        )
-        return "falhou"
-    except (URLError, TimeoutError, OSError) as erro:
-        logger.error(
-            "Não foi possível enviar a notificação WhatsApp da reserva %s "
-            "(%s).",
-            agendamento_id,
-            type(erro).__name__
-        )
-        return "falhou"
-
-    return "aceita"
+    return f"https://wa.me/{telefone}?{urlencode({'text': mensagem})}"
 
 
 # =========================================================
@@ -1773,7 +1646,8 @@ def criar_agendamento(
                 tipo,
                 valor,
                 ativo,
-                taxa_reserva
+                taxa_reserva,
+                responsavel_whatsapp
             FROM quadra
             WHERE id = %s
             FOR UPDATE
@@ -2095,23 +1969,14 @@ def criar_agendamento(
         )
 
         conexao.commit()
-        try:
-            notificacao_whatsapp = enviar_notificacao_whatsapp_reserva(
-                agendamento_id=agendamento_id,
-                nome_cliente=dados.nome.strip(),
-                contato_cliente=dados.contato.strip(),
-                nome_quadra=quadra[1],
-                data_reserva=data_reserva,
-                horario_reserva=horario_reserva
-            )
-        except Exception as erro:
-            logger.exception(
-                "A reserva %s foi salva, mas houve um erro ao processar "
-                "a notificação WhatsApp (%s).",
-                agendamento_id,
-                type(erro).__name__
-            )
-            notificacao_whatsapp = "falhou"
+        whatsapp_url = criar_link_whatsapp_reserva(
+            whatsapp_responsavel=quadra[6],
+            nome_cliente=dados.nome.strip(),
+            contato_cliente=dados.contato.strip(),
+            nome_quadra=quadra[1],
+            data_reserva=data_reserva,
+            horario_reserva=horario_reserva
+        )
 
         return {
             "mensagem":
@@ -2123,8 +1988,8 @@ def criar_agendamento(
             "status":
                 "Pendente",
 
-            "whatsapp_notificacao":
-                notificacao_whatsapp,
+            "whatsapp_url":
+                whatsapp_url,
 
             "valor_hora":
                 valor_hora,

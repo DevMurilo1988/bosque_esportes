@@ -48,46 +48,20 @@ precisa apenas de `SELECT`, `INSERT`, `UPDATE` e `DELETE` nas tabelas do sistema
     abertura. Não use dados pessoais reais até revisar backups, privacidade e
     plano do banco externo.
 
-## Notificações WhatsApp (opcional)
+## Solicitações pelo WhatsApp
 
-O sistema pode avisar o agente quando uma solicitação for criada. A reserva é
-salva como **Pendente** antes do envio, e a confirmação continua sendo feita no
-painel administrativo. Se o WhatsApp estiver indisponível ou sem configuração,
-a solicitação permanece salva; a falha de envio fica registrada nos logs do
-serviço. A resposta positiva da Meta confirma que a mensagem foi aceita para
-envio, não que foi entregue ou lida; não há reenvio automático nesta versão.
+Depois de salvar uma solicitação como **Pendente**, o site abre uma conversa
+`wa.me` com o WhatsApp definido no cadastro da quadra e preenche uma mensagem
+com nome e contato do cliente, quadra, data e horário. O cliente precisa tocar
+em **Enviar** no WhatsApp; o site não envia a mensagem por conta própria. O
+responsável continua o atendimento pelo WhatsApp Business e confirma a reserva
+no painel administrativo.
 
-Para ativar:
-
-1. Configure a WhatsApp Business Platform (Cloud API) da Meta e um número
-   remetente habilitado.
-2. Crie e obtenha aprovação para um modelo de mensagem na língua `pt_BR`, com
-   cinco variáveis de corpo, nesta ordem: nome do cliente, WhatsApp do cliente,
-   quadra, data e horário. Por exemplo:
-
-   ```text
-   Nova solicitação de reserva
-   Cliente: {{1}}
-   WhatsApp: {{2}}
-   Quadra: {{3}}
-   Data: {{4}}
-   Horário: {{5}}
-   Acesse o painel para analisar e confirmar.
-   ```
-
-3. No `.env` local, ou nas variáveis de ambiente do serviço no Render, configure
-   `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
-   `WHATSAPP_AGENT_PHONE`, `WHATSAPP_TEMPLATE_NAME` e
-   `WHATSAPP_GRAPH_API_VERSION`. O destinatário deve incluir o código do país
-   (por exemplo, `+55...`). `WHATSAPP_TEMPLATE_LANGUAGE` é opcional e assume
-   `pt_BR` por padrão.
-4. Guarde o token apenas como segredo no Render e não o envie ao GitHub. O
-   agente deve autorizar receber esses avisos; compartilhe o contato do cliente
-   somente para tratar a solicitação de reserva.
-
-Sem essas configurações, o envio fica desativado. Não é necessário webhook para
-este fluxo: o agente recebe o alerta no WhatsApp e confirma a solicitação no
-painel do sistema.
+Cadastre o telefone do responsável em cada quadra, incluindo DDD. Números
+brasileiros com 10 ou 11 dígitos recebem o código `55` automaticamente. O
+telefone será usado como destinatário do link; sem um número válido, o pedido
+continua registrado e o site avisa que o WhatsApp do responsável não está
+configurado. Nenhum token ou configuração da API da Meta é necessário.
 
 ## Limites e segurança
 

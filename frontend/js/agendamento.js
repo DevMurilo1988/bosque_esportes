@@ -684,17 +684,17 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
 
-        console.log(
-            'Dados enviados:',
-            dados
-        );
-
-
         btnAvancar.disabled = true;
 
         btnAvancar.textContent =
             'ENVIANDO...';
 
+        const janelaWhatsapp =
+            window.open('about:blank', '_blank');
+
+        if (janelaWhatsapp) {
+            janelaWhatsapp.opener = null;
+        }
 
         fetch('/agendamentos', {
 
@@ -729,17 +729,27 @@ document.addEventListener('DOMContentLoaded', () => {
         })
 
         .then(resultado => {
-
-            console.log(
-                'Resposta do servidor:',
-                resultado
-            );
-
-
-            alert(
-                'Solicitação enviada com sucesso!\n\n' +
-                'Sua reserva está Pendente de confirmação.'
-            );
+            if (resultado.whatsapp_url) {
+                if (janelaWhatsapp) {
+                    janelaWhatsapp.location.href =
+                        resultado.whatsapp_url;
+                } else {
+                    window.location.assign(resultado.whatsapp_url);
+                }
+                alert(
+                    'Solicitação registrada como Pendente.\n\n' +
+                    'O WhatsApp abrirá com a mensagem preenchida. ' +
+                    'Toque em Enviar para avisar o responsável.'
+                );
+            } else {
+                if (janelaWhatsapp) {
+                    janelaWhatsapp.close();
+                }
+                alert(
+                    'Solicitação registrada como Pendente, mas esta quadra ' +
+                    'ainda não tem um WhatsApp de responsável configurado.'
+                );
+            }
 
 
             limparFormulario();
@@ -749,6 +759,9 @@ document.addEventListener('DOMContentLoaded', () => {
         })
 
         .catch(error => {
+            if (janelaWhatsapp) {
+                janelaWhatsapp.close();
+            }
 
             console.error(
                 'Erro ao solicitar reserva:',
