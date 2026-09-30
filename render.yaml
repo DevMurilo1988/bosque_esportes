@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: bosque-esportes-teste
+    runtime: python
+    plan: free
+    region: virginia
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /api/ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_CONNECT_TIMEOUT
+        value: "10"
+      - key: DB_SSL_DISABLED
+        value: "false"
+      - key: DB_SSL_VERIFY_CERT
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"

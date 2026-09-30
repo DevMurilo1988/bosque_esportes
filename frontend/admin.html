@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Admin - Bosque Esportes</title>
+
+    <link
+        rel="stylesheet"
+        href="/frontend/css/admin.css?v=7"
+    >
+
+</head>
+
+
+<body>
+
+    <main id="admin-login" class="admin-login" hidden>
+        <form id="admin-login-form" class="admin-login-card">
+            <div class="header-logo">
+                <h1>BOSQUE<span>ESPORTES</span></h1>
+                <p>Acesso administrativo</p>
+            </div>
+            <label for="admin-usuario">Usuário</label>
+            <input
+                id="admin-usuario"
+                name="usuario"
+                type="text"
+                autocomplete="username"
+                required
+            >
+            <label for="admin-senha">Senha</label>
+            <input
+                id="admin-senha"
+                name="senha"
+                type="password"
+                autocomplete="current-password"
+                required
+            >
+            <p id="admin-login-erro" role="alert"></p>
+            <button type="submit" class="btn-destaque">Entrar</button>
+            <a href="/">Voltar ao site</a>
+        </form>
+    </main>
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <div id="admin-app" hidden>
+    <header class="admin-header">
+
+        <div class="header-logo">
+
+            <h1>
+                BOSQUE<span>ESPORTES</span>
+            </h1>
+
+            <p>
+                Painel administrativo
+            </p>
+
+        </div>
+
+
+        <a
+            href="/"
+            class="btn-home"
+        >
+            ← Voltar para o site
+        </a>
+        <button id="admin-logout" class="btn-home" type="button">
+            Sair
+        </button>
+        <label id="admin-court-scope" class="admin-court-scope" hidden>
+            Quadra
+            <select id="admin-court-scope-select"></select>
+        </label>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         CONTEÚDO
+    ====================================================== -->
+
+    <main class="admin-container">
+
+
+        <!-- =================================================
+             RESUMO
+        ================================================== -->
+
+        <section class="resumo">
+
+
+            <div class="resumo-card">
+
+                <span>
+                    Total
+                </span>
+
+                <strong id="total-agendamentos">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="resumo-card pendente">
+
+                <span>
+                    Pendentes
+                </span>
+
+                <strong id="total-pendentes">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="resumo-card confirmado">
+
+                <span>
+                    Confirmados
+                </span>
+
+                <strong id="total-confirmados">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="resumo-card cancelado">
+
+                <span>
+                    Cancelados
+                </span>
+
+                <strong id="total-cancelados">
+                    0
+                </strong>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             MENU
+        ================================================== -->
+
+        <nav class="admin-menu">
+
+
+            <button
+                class="menu-btn active"
+                data-section="agendamentos"
+            >
+                Agendamentos
+            </button>
+
+
+            <button
+                class="menu-btn"
+                data-section="mensalistas"
+            >
+                Mensalistas
+            </button>
+
+            <button class="menu-btn" data-section="pagamentos">
+                Pagamentos
+            </button>
+
+            <button class="menu-btn" data-section="relatorios">
+                Relatórios
+            </button>
+
+            <button
+                class="menu-btn"
+                data-section="clientes"
+            >
+                Clientes
+            </button>
+
+
+            <button
+                class="menu-btn"
+                data-section="quadras"
+            >
+                Quadras
+            </button>
+
+
+            <button
+                class="menu-btn"
+                data-section="configuracoes"
+            >
+                Configurações
+            </button>
+
+            <button
+                class="menu-btn"
+                data-section="usuarios"
+                hidden
+            >
+                Usuários admin
+            </button>
+
+
+        </nav>
+
+
+
+        <!-- =================================================
+             AGENDAMENTOS
+        ================================================== -->
+
+        <section
+            id="section-agendamentos"
+            class="admin-section active"
+        >
+
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        Agendamentos
+                    </h2>
+
+                    <span id="quantidade-resultados">
+                        0 registros
+                    </span>
+
+                </div>
+
+
+                <button id="btn-atualizar">
+                    Atualizar
+                </button>
+
+            </div>
+
+            <section class="day-games-panel" aria-labelledby="day-games-title">
+                <div class="day-games-toolbar">
+                    <div>
+                        <h3 id="day-games-title">Jogos do dia</h3>
+                        <span id="jogos-dia-resumo">Selecione uma data para visualizar partidas e pagamentos.</span>
+                    </div>
+                    <label>
+                        Dia
+                        <input id="jogos-dia-data" type="date">
+                    </label>
+                    <label>
+                        Quadra
+                        <select id="jogos-dia-quadra">
+                            <option value="">Todas</option>
+                        </select>
+                    </label>
+                    <button id="btn-atualizar-jogos-dia" type="button">Atualizar jogos</button>
+                </div>
+                <div class="tabela-container day-games-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th>Cliente / contato</th>
+                                <th>Quadra</th>
+                                <th>Tipo</th>
+                                <th>Status</th>
+                                <th>Pago / total</th>
+                                <th>Falta pagar</th>
+                                <th>Jogos do cliente</th>
+                                <th>Atendimento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-jogos-dia"></tbody>
+                    </table>
+                    <div id="mensagem-jogos-dia" class="mensagem-vazia">
+                        Nenhum jogo encontrado para esta data.
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- FILTROS -->
+
+            <div class="filtros">
+
+
+                <div class="filtro">
+
+                    <label for="filtro-data">
+                        Data
+                    </label>
+
+                    <input
+                        type="date"
+                        id="filtro-data"
+                    >
+
+                </div>
+
+
+                <div class="filtro">
+
+                    <label for="filtro-quadra">
+                        Quadra
+                    </label>
+
+                    <select id="filtro-quadra">
+
+                        <option value="">
+                            Todas
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filtro">
+
+                    <label for="filtro-status">
+                        Status
+                    </label>
+
+                    <select id="filtro-status">
+
+                        <option value="">
+                            Todos
+                        </option>
+
+                        <option value="Pendente">
+                            Pendente
+                        </option>
+
+                        <option value="Confirmado">
+                            Confirmado
+                        </option>
+
+                        <option value="Cancelado">
+                            Cancelado
+                        </option>
+
+                        <option value="Não atendido">
+                            Não atendido
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button id="btn-limpar-filtros">
+                    Limpar filtros
+                </button>
+
+
+            </div>
+
+
+
+            <!-- TABELA -->
+
+            <div class="tabela-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                ID
+                            </th>
+
+                            <th>
+                                Cliente
+                            </th>
+
+                            <th>
+                                Contato
+                            </th>
+
+                            <th>
+                                Quadra
+                            </th>
+
+                            <th>
+                                Data
+                            </th>
+
+                            <th>
+                                Horário
+                            </th>
+
+                            <th>Valor</th>
+
+                            <th>Taxa</th>
+
+                            <th>
+                                Status
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="lista-agendamentos">
+                    </tbody>
+
+                </table>
+
+
+                <div
+                    id="mensagem-vazia"
+                    class="mensagem-vazia"
+                >
+                    Nenhum agendamento encontrado.
+                </div>
+
+            </div>
+
+
+        </section>
+
+        <section id="section-pagamentos" class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h2>Pagamentos</h2>
+                    <span>Registro de pagamentos realizados externamente</span>
+                </div>
+                <button id="btn-atualizar-pagamentos">Atualizar</button>
+            </div>
+
+            <div class="form-panel payment-form">
+                <div class="form-panel-header">
+                    <div>
+                        <h3>Registrar pagamento</h3>
+                        <p>Controle interno; nenhum pagamento é processado online.</p>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label for="pagamento-tipo">Referência</label>
+                        <select id="pagamento-tipo">
+                            <option value="Reserva">Reserva</option>
+                            <option value="Mensalidade">Mensalidade</option>
+                        </select>
+                    </div>
+                    <div class="form-field" id="pagamento-reserva-field">
+                        <label for="pagamento-reserva">Reserva</label>
+                        <select id="pagamento-reserva"></select>
+                    </div>
+                    <div class="form-field" id="pagamento-mensalidade-field" hidden>
+                        <label for="pagamento-mensalidade">Mensalista</label>
+                        <select id="pagamento-mensalidade"></select>
+                    </div>
+                    <div class="form-field" id="pagamento-competencia-field" hidden>
+                        <label for="pagamento-competencia">Competência</label>
+                        <input id="pagamento-competencia" type="month">
+                    </div>
+                    <div class="form-field">
+                        <label for="pagamento-valor">Valor recebido</label>
+                        <input id="pagamento-valor" type="number" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="form-field">
+                        <label for="pagamento-status">Status</label>
+                        <select id="pagamento-status">
+                            <option value="Pendente">Pendente</option>
+                            <option value="Recebido">Recebido</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="pagamento-forma">Forma de pagamento</label>
+                        <select id="pagamento-forma">
+                            <option value="">Selecione</option>
+                            <option value="PIX">PIX</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Cartão">Cartão</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="pagamento-data">Data</label>
+                        <input id="pagamento-data" type="date">
+                    </div>
+                    <div class="form-field form-field-full">
+                        <label for="pagamento-observacao">Observação</label>
+                        <textarea id="pagamento-observacao"></textarea>
+                    </div>
+                </div>
+                <div class="form-panel-footer">
+                    <button id="btn-salvar-pagamento" class="btn-destaque">
+                        Registrar pagamento
+                    </button>
+                </div>
+            </div>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Tipo / Quadra</th>
+                            <th>Competência</th>
+                            <th>Valor</th>
+                            <th>Taxa</th>
+                            <th>Total</th>
+                            <th>Recebido</th>
+                            <th>Forma</th>
+                            <th>Status</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-pagamentos"></tbody>
+                </table>
+                <div id="mensagem-pagamentos" class="mensagem-vazia">
+                    Nenhum pagamento registrado.
+                </div>
+            </div>
+        </section>
+
+        <dialog id="pagamento-historico-dialog" class="payment-history-dialog">
+            <div class="payment-history-heading">
+                <h3>Histórico do pagamento</h3>
+                <button type="button" id="fechar-historico-pagamento">Fechar</button>
+            </div>
+            <div id="pagamento-historico-conteudo"></div>
+        </dialog>
+
+        <dialog id="jogo-pagamento-dialog" class="payment-history-dialog">
+            <form id="jogo-pagamento-form">
+                <div class="payment-history-heading">
+                    <h3>Registrar pagamento da partida</h3>
+                    <button type="button" id="fechar-jogo-pagamento">Fechar</button>
+                </div>
+                <p id="jogo-pagamento-resumo"></p>
+                <label for="jogo-pagamento-total">Total recebido até agora</label>
+                <input id="jogo-pagamento-total" type="number" min="0" step="0.01" required>
+                <label for="jogo-pagamento-forma">Forma de pagamento</label>
+                <select id="jogo-pagamento-forma" required>
+                    <option value="">Selecione</option>
+                    <option value="PIX">PIX</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Cartão">Cartão</option>
+                    <option value="Outro">Outro</option>
+                </select>
+                <label for="jogo-pagamento-data">Data do recebimento</label>
+                <input id="jogo-pagamento-data" type="date" required>
+                <div class="form-panel-footer">
+                    <button class="btn-destaque" type="submit">Salvar recebimento</button>
+                </div>
+            </form>
+        </dialog>
+
+        <section id="section-relatorios" class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h2>Relatórios</h2>
+                    <span>Indicadores calculados a partir dos dados do sistema</span>
+                </div>
+                <button id="btn-atualizar-relatorios">Consultar</button>
+            </div>
+            <div class="filtros report-filters">
+                <div class="filtro">
+                    <label for="relatorio-periodo">Período</label>
+                    <select id="relatorio-periodo">
+                        <option value="custom">Personalizado</option>
+                        <option value="today">Hoje</option>
+                        <option value="7days">Últimos 7 dias</option>
+                        <option value="month">Este mês</option>
+                        <option value="previous-month">Mês anterior</option>
+                        <option value="30days">Últimos 30 dias</option>
+                    </select>
+                </div>
+                <div class="filtro">
+                    <label for="relatorio-inicio">De</label>
+                    <input id="relatorio-inicio" type="date">
+                </div>
+                <div class="filtro">
+                    <label for="relatorio-fim">Até</label>
+                    <input id="relatorio-fim" type="date">
+                </div>
+                <div class="filtro">
+                    <label for="relatorio-quadra">Quadra</label>
+                    <select id="relatorio-quadra">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="filtro">
+                    <label for="relatorio-tipo">Tipo de quadra</label>
+                    <select id="relatorio-tipo">
+                        <option value="">Todos</option>
+                        <option value="sintetico">Sintético</option>
+                        <option value="salao">Salão</option>
+                        <option value="areia">Areia</option>
+                    </select>
+                </div>
+            </div>
+            <nav class="report-tabs" aria-label="Seções do dashboard">
+                <button type="button" class="report-tab active" data-report-tab="overview">Visão Geral</button>
+                <button type="button" class="report-tab" data-report-tab="demand">Demanda</button>
+                <button type="button" class="report-tab" data-report-tab="finance">Financeiro</button>
+                <button type="button" class="report-tab" data-report-tab="customers">Clientes</button>
+                <button type="button" class="report-tab" data-report-tab="members">Mensalistas</button>
+            </nav>
+
+            <section class="report-pane active" data-report-pane="overview">
+                <div id="relatorio-resumo" class="resumo report-summary"></div>
+                <div class="report-grid">
+                    <article class="report-card report-card-chart">
+                        <h3>Status das reservas no período</h3>
+                        <div id="relatorio-funil"></div>
+                    </article>
+                    <article class="report-card report-card-chart report-card-wide">
+                        <h3>Reservas ao longo do período</h3>
+                        <div id="grafico-reservas"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Comparação com o período anterior</h3>
+                        <div id="grafico-comparacao"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Jogos futuros</h3>
+                        <div id="relatorio-futuros"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="report-pane" data-report-pane="demand" hidden>
+                <div class="report-grid">
+                    <article class="report-card report-card-chart">
+                        <h3>Demanda por dia da semana</h3>
+                        <div id="grafico-demanda-semana"></div>
+                    </article>
+                    <article class="report-card report-card-chart report-card-wide">
+                        <h3>Demanda por horário · status das solicitações</h3>
+                        <div id="grafico-demanda-horario"></div>
+                    </article>
+                    <article class="report-card report-card-wide">
+                        <h3>Ranking de horários</h3>
+                        <div class="report-ranking-columns">
+                            <div><h4>Mais requisitados</h4><div id="horarios-mais"></div></div>
+                            <div><h4>Menos requisitados</h4><div id="horarios-menos"></div></div>
+                        </div>
+                    </article>
+                    <article class="report-card report-card-chart">
+                        <h3>Solicitações por quadra e status</h3>
+                        <div id="grafico-demanda-quadras"></div>
+                    </article>
+                    <article class="report-card report-card-chart">
+                        <h3>Utilização por quadra</h3>
+                        <div id="grafico-utilizacao"></div>
+                    </article>
+                    <article class="report-card report-card-wide">
+                        <h3>Quadra × horário · solicitações</h3>
+                        <div id="relatorio-mapa-calor"></div>
+                    </article>
+                    <article class="report-card report-card-chart report-card-wide">
+                        <h3>Cancelamentos ao longo do tempo</h3>
+                        <div id="grafico-cancelamentos"></div>
+                    </article>
+                    <article class="report-card report-card-chart">
+                        <h3>Cancelamentos por dia da semana</h3>
+                        <div id="grafico-cancel-semana"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Cancelamentos por horário</h3>
+                        <div id="relatorio-cancel-horario"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Cancelamentos por quadra</h3>
+                        <div id="relatorio-cancel-quadra"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Clientes com mais cancelamentos</h3>
+                        <div id="relatorio-cancel-cliente"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Utilização por dia</h3>
+                        <div id="relatorio-utilizacao-dia"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Utilização por mês</h3>
+                        <div id="relatorio-utilizacao-mes"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Demanda mensal · maior e menor no intervalo</h3>
+                        <div id="relatorio-extremos-mensais"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="report-pane" data-report-pane="finance" hidden>
+                <div id="relatorio-financeiro-resumo" class="resumo report-summary"></div>
+                <div class="report-grid">
+                    <article class="report-card report-card-chart report-card-wide">
+                        <h3>Recebimentos no período</h3>
+                        <div id="grafico-pagamentos"></div>
+                    </article>
+                    <article class="report-card report-card-chart">
+                        <h3>Faturamento por quadra</h3>
+                        <div id="grafico-financeiro-quadras"></div>
+                    </article>
+                    <article class="report-card report-card-chart">
+                        <h3>Faturamento por dia da semana</h3>
+                        <div id="grafico-financeiro-semana"></div>
+                    </article>
+                    <article class="report-card report-card-chart report-card-wide">
+                        <h3>Faturamento mensal</h3>
+                        <div id="grafico-financeiro-mes"></div>
+                    </article>
+                    <article class="report-card report-card-wide">
+                        <h3>Contas a receber · reservas confirmadas e mensalidade do mês</h3>
+                        <div id="relatorio-contas-receber"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="report-pane" data-report-pane="customers" hidden>
+                <div class="report-grid">
+                    <div class="report-card">
+                        <h3>Clientes com mais jogos avulsos confirmados</h3>
+                        <div id="relatorio-clientes-top"></div>
+                    </div>
+                    <div class="report-card">
+                        <h3>Top clientes do período selecionado</h3>
+                        <div id="relatorio-clientes-mes"></div>
+                    </div>
+                    <article class="report-card report-card-wide">
+                        <div class="report-card-heading">
+                            <h3>Clientes sem jogo confirmado recente</h3>
+                            <label>Inatividade
+                                <select id="relatorio-inativo-dias">
+                                    <option value="30">30 dias</option>
+                                    <option value="60">60 dias</option>
+                                    <option value="90">90 dias</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                            </label>
+                            <input id="relatorio-inativo-custom" type="number" min="1" max="365" value="30" hidden>
+                        </div>
+                        <div id="relatorio-clientes-inativos"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="report-pane" data-report-pane="members" hidden>
+                <div id="relatorio-mensalistas-resumo" class="resumo report-summary"></div>
+                <div class="report-grid">
+                    <article class="report-card">
+                        <h3>Mensalistas por jogos recorrentes no período</h3>
+                        <div id="relatorio-mensalistas-top"></div>
+                    </article>
+                    <article class="report-card report-card-chart">
+                        <h3>Histórico de abandono</h3>
+                        <div id="grafico-abandono-mensalistas"></div>
+                    </article>
+                </div>
+            </section>
+        </section>
+
+
+
+        <!-- =================================================
+             MENSALISTAS
+        ================================================== -->
+
+        <section
+            id="section-mensalistas"
+            class="admin-section"
+        >
+
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        Mensalistas
+                    </h2>
+
+                    <span>
+                        Controle das reservas recorrentes
+                    </span>
+
+                </div>
+
+
+                <div class="section-actions">
+
+                    <button
+                        id="btn-novo-mensalista"
+                        class="btn-destaque"
+                    >
+                        + Novo Mensalista
+                    </button>
+
+
+                    <button id="btn-atualizar-mensalistas">
+                        Atualizar
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- FORMULÁRIO -->
+
+            <div
+                id="form-mensalista"
+                class="form-panel"
+            >
+
+
+                <div class="form-panel-header">
+
+                    <div>
+
+                        <h3>
+                            Novo Mensalista
+                        </h3>
+
+                        <p>
+                            Cadastre uma reserva recorrente.
+                        </p>
+
+                    </div>
+
+
+                    <button
+                        id="btn-fechar-formulario"
+                        class="btn-fechar"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+
+                <div class="form-grid">
+
+
+                    <div class="form-field">
+
+                        <label for="mensalista-cliente">
+                            Cliente
+                        </label>
+
+                        <select id="mensalista-cliente">
+
+                            <option value="">
+                                Selecione um cliente
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <div class="form-field">
+
+                        <label for="mensalista-quadra">
+                            Quadra
+                        </label>
+
+                        <select id="mensalista-quadra">
+
+                            <option value="">
+                                Selecione uma quadra
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <div class="form-field">
+
+                        <label for="mensalista-dia">
+                            Dia da semana
+                        </label>
+
+                        <select id="mensalista-dia">
+
+                            <option value="">
+                                Selecione o dia
+                            </option>
+
+                            <option value="0">
+                                Domingo
+                            </option>
+
+                            <option value="1">
+                                Segunda-feira
+                            </option>
+
+                            <option value="2">
+                                Terça-feira
+                            </option>
+
+                            <option value="3">
+                                Quarta-feira
+                            </option>
+
+                            <option value="4">
+                                Quinta-feira
+                            </option>
+
+                            <option value="5">
+                                Sexta-feira
+                            </option>
+
+                            <option value="6">
+                                Sábado
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <div class="form-field">
+
+                        <label for="mensalista-horario">
+                            Horário
+                        </label>
+
+                        <input
+                            type="time"
+                            id="mensalista-horario"
+                        >
+
+                    </div>
+
+
+
+                    <div class="form-field">
+
+                        <label for="mensalista-valor">
+                            Valor mensal da quadra
+                        </label>
+
+                        <input
+                            type="text"
+                            id="mensalista-valor"
+                            value="Selecione uma quadra"
+                            readonly
+                        >
+
+                    </div>
+
+
+
+                    <div class="form-field">
+
+                        <label for="mensalista-inicio">
+                            Data de início
+                        </label>
+
+                        <input
+                            type="date"
+                            id="mensalista-inicio"
+                        >
+
+                    </div>
+
+
+
+                    <div class="form-field form-field-full">
+
+                        <label for="mensalista-observacao">
+                            Observação
+                        </label>
+
+                        <textarea
+                            id="mensalista-observacao"
+                            placeholder="Informações adicionais..."
+                        ></textarea>
+
+                    </div>
+
+
+                </div>
+
+
+
+                <div class="form-panel-footer">
+
+                    <button id="btn-cancelar-mensalista">
+                        Cancelar
+                    </button>
+
+
+                    <button
+                        id="btn-salvar-mensalista"
+                        class="btn-destaque"
+                    >
+                        Salvar Mensalista
+                    </button>
+
+                </div>
+
+
+            </div>
+
+
+
+            <!-- TABELA -->
+
+            <div class="tabela-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Cliente
+                            </th>
+
+                            <th>
+                                Quadra
+                            </th>
+
+                            <th>
+                                Dia
+                            </th>
+
+                            <th>
+                                Horário
+                            </th>
+
+                            <th>
+                                Valor mensal
+                            </th>
+
+                            <th>
+                                Início
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th>
+                                Ação
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="lista-mensalistas">
+                    </tbody>
+
+                </table>
+
+
+                <div
+                    id="mensagem-mensalistas"
+                    class="mensagem-vazia"
+                >
+                    Nenhum mensalista encontrado.
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             CLIENTES
+        ================================================== -->
+
+        <section
+            id="section-clientes"
+            class="admin-section"
+        >
+
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        Clientes
+                    </h2>
+
+                    <span>
+                        Clientes cadastrados automaticamente pelas reservas
+                    </span>
+
+                </div>
+
+
+                <div class="section-actions">
+
+                    <button
+                        id="btn-atualizar-clientes"
+                        type="button"
+                    >
+                        Atualizar
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================================
+                 TABELA CLIENTES
+            ================================================== -->
+
+            <div class="tabela-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                ID
+                            </th>
+
+                            <th>
+                                Nome
+                            </th>
+
+                            <th>
+                                Contato
+                            </th>
+
+                            <th>
+                                Mensalista
+                            </th>
+
+                            <th>
+                                Garantia
+                            </th>
+
+                            <th>
+                                Motivo da garantia
+                            </th>
+
+                            <th>
+                                Ações
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="lista-clientes">
+                    </tbody>
+
+                </table>
+
+
+                <div
+                    id="mensagem-clientes"
+                    class="mensagem-vazia"
+                >
+                    Nenhum cliente encontrado.
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             QUADRAS
+        ================================================== -->
+
+        <section
+            id="section-quadras"
+            class="admin-section"
+        >
+
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        Quadras
+                    </h2>
+
+                    <span>
+                        Valores e informações de cada quadra
+                    </span>
+
+                </div>
+
+
+                <button id="btn-atualizar-quadras">
+                    Atualizar
+                </button>
+
+            </div>
+
+
+
+            <div
+                id="lista-quadras"
+                class="quadras-grid"
+            >
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             CONFIGURAÇÕES
+        ================================================== -->
+
+        <section
+            id="section-configuracoes"
+            class="admin-section"
+        >
+
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        Configurações
+                    </h2>
+
+                    <span>
+                        Configurações gerais do sistema
+                    </span>
+
+                </div>
+
+
+                <button id="btn-atualizar-configuracoes">
+                    Atualizar
+                </button>
+
+            </div>
+
+
+
+            <div
+                id="lista-configuracoes"
+                class="config-grid"
+            >
+            </div>
+
+
+        </section>
+
+        <section id="section-usuarios" class="admin-section">
+            <div class="section-header">
+                <div>
+                    <h2>Usuários administrativos</h2>
+                    <span>Crie acessos individuais e defina o que cada pessoa pode consultar ou editar.</span>
+                </div>
+                <button id="btn-atualizar-usuarios" type="button">Atualizar</button>
+            </div>
+
+            <form id="form-novo-usuario" class="admin-user-form">
+                <h3>Novo usuário</h3>
+                <div class="admin-user-fields">
+                    <label>
+                        Nome
+                        <input id="novo-admin-nome" type="text" maxlength="100" required>
+                    </label>
+                    <label>
+                        Usuário
+                        <input id="novo-admin-usuario" type="text" minlength="3" maxlength="50" autocomplete="off" required>
+                    </label>
+                    <label>
+                        Senha inicial (mínimo 12 caracteres)
+                        <input id="novo-admin-senha" type="password" minlength="12" autocomplete="new-password" required>
+                    </label>
+                </div>
+                <div class="admin-permission-grid" id="novo-admin-permissoes"></div>
+                <fieldset class="admin-permission-courts">
+                    <legend>Quadras que o usuário pode acessar</legend>
+                    <div id="novo-admin-quadras" class="admin-permission-grid"></div>
+                </fieldset>
+                <div class="form-panel-footer">
+                    <button class="btn-destaque" type="submit">Criar usuário</button>
+                    <p id="mensagem-novo-usuario" role="status"></p>
+                </div>
+            </form>
+
+            <div class="admin-users-list">
+                <h3>Acessos cadastrados</h3>
+                <div id="lista-usuarios-admin" class="admin-users-grid"></div>
+                <p id="mensagem-usuarios-admin" class="mensagem-vazia">Nenhum usuário adicional cadastrado.</p>
+            </div>
+        </section>
+
+
+    </main>
+
+
+
+    </div>
+
+    <script src="/frontend/js/admin.js?v=7"></script>
+
+</body>
+
+</html>

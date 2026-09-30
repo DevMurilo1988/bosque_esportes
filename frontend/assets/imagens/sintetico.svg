@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="grass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#287748"/>
+      <stop offset="1" stop-color="#0d3527"/>
+    </linearGradient>
+    <linearGradient id="light" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d6ffd9" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#03160e" stop-opacity=".45"/>
+    </linearGradient>
+    <pattern id="stripes" width="180" height="900" patternUnits="userSpaceOnUse">
+      <rect width="90" height="900" fill="#b2ffb9" opacity=".045"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="900" fill="url(#grass)"/>
+  <rect width="1200" height="900" fill="url(#stripes)"/>
+  <path d="M0 0h1200v900H0z" fill="url(#light)"/>
+  <g fill="none" stroke="#e5ffe9" stroke-opacity=".75" stroke-width="7">
+    <path d="M85 85h1030v730H85z"/>
+    <path d="M600 85v730"/>
+    <circle cx="600" cy="450" r="105"/>
+    <path d="M85 265h130v370H85m1030-370h-130v370h130"/>
+    <path d="M85 330h70v240H85m1030-240h-70v240h70"/>
+  </g>
+  <g fill="#f5fff6" opacity=".8">
+    <circle cx="600" cy="450" r="8"/>
+    <circle cx="170" cy="450" r="8"/>
+    <circle cx="1030" cy="450" r="8"/>
+  </g>
+</svg>

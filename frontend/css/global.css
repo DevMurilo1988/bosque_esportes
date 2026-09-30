@@ -1,0 +1,70 @@
+/* css/global.css */
+:root {
+  --bg-dark: #090d16;
+  --bg-card: rgba(255, 255, 255, 0.04);
+  --border-glass: rgba(255, 255, 255, 0.08);
+
+  /* Temas de Cor dos Terrenos */
+  --color-salao: #00e5ff;     /* Neon Cyan */
+  --color-sintetico: #00ff66; /* Neon Green */
+  --color-areia: #ff9900;     /* Sunset Amber */
+  --text-primary: #ffffff;
+  --text-muted: #8a99ad;
+
+  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+  --transition-smooth: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* Header Padrão */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 3rem;
+  background: rgba(9, 13, 22, 0.8);
+  backdrop-filter: blur(12px);
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 100;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 1px;
+}
+.logo span { color: var(--color-sintetico); }
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition-smooth);
+}
+
+.nav-links a:hover, .nav-links a.active {
+  color: var(--text-primary);
+}

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Temporary exports and local state
+*.dump
+*.sql.gz
+backend/core-data-transfer.sql
+*data-export*.sql
+*database-dump*.sql
+.pytest_cache/
+htmlcov/
+dist/
+build/
+coverage.xml
+*.log
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

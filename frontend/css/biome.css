@@ -1,0 +1,573 @@
+/* ==================================================
+   CONTAINER PRINCIPAL
+================================================== */
+
+.biome-container {
+    padding: 6.5rem 1.5rem 0;
+
+    max-width: 1400px;
+
+    margin: 0 auto;
+
+    min-height: 100vh;
+
+    display: flex;
+
+    flex-direction: column;
+}
+
+
+/* ==================================================
+   CABEÇALHO
+================================================== */
+
+.biome-header {
+    text-align: center;
+
+    margin: 4.5rem 0 2.25rem;
+}
+
+
+.biome-header h1 {
+    margin-top: 0.65rem;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+
+    font-weight: 900;
+
+    letter-spacing: 2px;
+}
+
+
+.biome-header p {
+    color: var(--text-muted);
+
+    font-size: 1.1rem;
+    max-width: 650px;
+    margin: 0.65rem auto 0;
+}
+
+
+/* ==================================================
+   GRID
+================================================== */
+
+.biome-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 1.5rem;
+
+    flex: 1;
+
+    padding: 0;
+}
+
+
+/* ==================================================
+   CARDS
+================================================== */
+
+.biome-card {
+    position: relative;
+
+    min-height: 480px;
+
+    border-radius: 20px;
+
+    background-color: var(--bg-card);
+
+    border: 1px solid var(--border-glass);
+
+    text-decoration: none;
+
+    color: var(--text-primary);
+
+    overflow: hidden;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: flex-end;
+
+    padding: 2.5rem 2rem;
+
+    transition: var(--transition-smooth);
+}
+
+
+/* ==================================================
+   BACKGROUND DAS IMAGENS
+================================================== */
+
+.biome-card-bg {
+    position: absolute;
+
+    inset: 0;
+
+    background-size: cover;
+
+    background-position: center;
+
+    z-index: 0;
+
+    transition: var(--transition-smooth);
+}
+
+.biome-sintetico .biome-card-bg {
+    background-image: url('/frontend/assets/imagens/sintetico.svg');
+}
+
+.biome-areia .biome-card-bg {
+    background-image: url('/frontend/assets/imagens/praia.avif');
+}
+
+
+.biome-card:hover .biome-card-bg {
+    transform: scale(1.05);
+}
+
+
+/* ==================================================
+   OVERLAY
+================================================== */
+
+.biome-overlay {
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        linear-gradient(
+            to top,
+            rgba(9, 13, 22, 0.98) 0%,
+            rgba(9, 13, 22, 0.75) 45%,
+            rgba(9, 13, 22, 0.15) 100%
+        );
+
+    z-index: 1;
+}
+
+
+/* ==================================================
+   CONTEÚDO
+================================================== */
+
+.biome-content {
+    position: relative;
+
+    z-index: 2;
+}
+
+
+/* ==================================================
+   HOVER
+================================================== */
+
+.biome-card:hover {
+    transform: translateY(-10px);
+}
+
+
+.biome-salao:hover {
+    border-color: var(--color-salao);
+
+    box-shadow:
+        0 0 30px
+        rgba(0, 229, 255, 0.25);
+}
+
+
+.biome-sintetico:hover {
+    border-color: var(--color-sintetico);
+
+    box-shadow:
+        0 0 30px
+        rgba(0, 255, 102, 0.25);
+}
+
+
+.biome-areia:hover {
+    border-color: var(--color-areia);
+
+    box-shadow:
+        0 0 30px
+        rgba(255, 153, 0, 0.25);
+}
+
+
+/* ==================================================
+   BADGE
+================================================== */
+
+.badge {
+    display: inline-block;
+
+    font-size: 0.75rem;
+
+    text-transform: uppercase;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    margin-bottom: 1rem;
+
+    color: var(--text-muted);
+}
+
+
+/* ==================================================
+   TÍTULOS
+================================================== */
+
+.biome-card h2 {
+    font-size: 2rem;
+
+    margin-bottom: 0.5rem;
+}
+
+
+.biome-card p {
+    color: var(--text-muted);
+
+    font-size: 0.95rem;
+
+    margin-bottom: 2rem;
+}
+
+
+/* ==================================================
+   RODAPÉ DO CARD
+================================================== */
+
+.biome-footer {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    border-top:
+        1px solid var(--border-glass);
+
+    padding-top: 1.25rem;
+}
+
+
+.price {
+    font-weight: 600;
+
+    font-size: 0.9rem;
+}
+
+.home-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+    align-items: center;
+    min-height: 390px;
+    overflow: hidden;
+    padding: clamp(2rem, 6vw, 5rem);
+    border: 1px solid var(--border-glass);
+    border-radius: 26px;
+    background:
+        radial-gradient(ellipse at 78% 45%, rgba(0, 255, 102, 0.13), transparent 37%),
+        linear-gradient(120deg, #101a24, #0b111c 66%);
+}
+
+.home-hero-copy {
+    position: relative;
+    z-index: 2;
+    max-width: 650px;
+}
+
+.home-eyebrow {
+    color: var(--color-sintetico);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+}
+
+.home-hero h1 {
+    margin: 0.8rem 0;
+    font-size: clamp(2.4rem, 5vw, 4.35rem);
+    line-height: 1.04;
+    letter-spacing: -0.045em;
+}
+
+.home-hero h1 span {
+    color: var(--color-sintetico);
+}
+
+.home-hero p,
+.home-about > p {
+    max-width: 540px;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: 1.8;
+}
+
+.home-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-top: 1.6rem;
+    padding: 0.85rem 1.15rem;
+    border: 1px solid rgba(0, 255, 102, 0.32);
+    border-radius: 10px;
+    color: var(--bg-dark);
+    background: var(--color-sintetico);
+    font-weight: 800;
+    text-decoration: none;
+    transition: var(--transition-smooth);
+}
+
+.home-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 255, 102, 0.15);
+}
+
+.home-hero-art {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 49%;
+    overflow: hidden;
+    opacity: 0.92;
+    background:
+        linear-gradient(90deg, #101a24 0%, rgba(16, 26, 36, 0.25) 46%, rgba(7, 13, 20, 0.12)),
+        url('/frontend/assets/imagens/praia.avif') center 48% / cover;
+    clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.hero-court-line {
+    position: absolute;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+}
+
+.hero-court-line-one {
+    inset: 12% 9%;
+}
+
+.hero-court-line-two {
+    top: 12%;
+    bottom: 12%;
+    left: 50%;
+}
+
+.hero-court-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 115px;
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.hero-ball {
+    position: absolute;
+    z-index: 1;
+    top: 36%;
+    left: 63%;
+    width: 70px;
+    aspect-ratio: 1;
+    border: 8px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    background: var(--color-sintetico);
+    box-shadow: 0 0 42px rgba(0, 255, 102, 0.45);
+}
+
+.hero-art-label {
+    position: absolute;
+    right: 9%;
+    bottom: 13%;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    line-height: 1.5;
+}
+
+.home-about,
+.home-contact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-top: 4.5rem;
+    padding: 2.2rem 0;
+    border-top: 1px solid var(--border-glass);
+}
+
+.home-about h2,
+.home-contact h2 {
+    margin-top: 0.55rem;
+    font-size: clamp(1.6rem, 3vw, 2.25rem);
+}
+
+.home-about > p {
+    max-width: 620px;
+}
+
+.home-contact {
+    margin-top: 0;
+}
+
+.home-cta-secondary {
+    flex-shrink: 0;
+    color: var(--text-primary);
+    background: transparent;
+}
+
+.home-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem max(1.5rem, calc((100vw - 1400px) / 2));
+    border-top: 1px solid var(--border-glass);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.home-footer .logo {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.home-footer a:last-child {
+    color: var(--text-muted);
+}
+
+
+.btn-action {
+    font-weight: 700;
+
+    font-size: 0.9rem;
+}
+
+
+/* ==================================================
+   IMAGEM DO SALÃO
+================================================== */
+
+.bg-salao {
+    background-image:
+        url('/frontend/assets/imagens/salao.jpeg');
+}
+
+
+/* ==================================================
+   RESPONSIVIDADE
+================================================== */
+
+@media (max-width: 968px) {
+
+    .biome-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .home-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .home-hero-art {
+        width: 54%;
+        opacity: 0.5;
+    }
+
+    .biome-card {
+        min-height: 420px;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .biome-container {
+        padding: 6rem 1rem 0;
+    }
+
+    .navbar {
+        padding: 1rem;
+    }
+
+    .nav-links {
+        gap: 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .biome-header {
+        padding: 0 1rem;
+        margin: 3rem 0 1.75rem;
+    }
+
+
+    .biome-header h1 {
+        font-size: 1.8rem;
+    }
+
+
+    .biome-header p {
+        font-size: 0.95rem;
+    }
+
+
+    .biome-grid {
+        padding: 0;
+    }
+
+
+    .biome-card {
+        min-height: 380px;
+
+        padding: 2rem 1.5rem;
+    }
+
+
+    .biome-card h2 {
+        font-size: 1.6rem;
+    }
+
+    .home-hero {
+        min-height: 430px;
+        padding: 2rem 1.35rem;
+    }
+
+    .home-hero-art {
+        width: 100%;
+        opacity: 0.24;
+        clip-path: none;
+        background:
+            linear-gradient(90deg, #101a24 0%, rgba(16, 26, 36, 0.55) 100%),
+            url('/frontend/assets/imagens/praia.avif') center / cover;
+    }
+
+    .home-hero p {
+        font-size: 0.95rem;
+    }
+
+    .home-about,
+    .home-contact {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 3rem;
+    }
+
+    .home-contact .home-cta {
+        margin-top: 0.6rem;
+    }
+
+    .home-footer {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 1.4rem 1rem;
+    }
+
+}

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Agendamento - Bosque Esportes</title>
+
+    <link rel="stylesheet" href="/frontend/css/global.css">
+    <link rel="stylesheet" href="/frontend/css/agendamento.css?v=8">
+</head>
+
+<body>
+
+    <!-- =========================================
+         NAVBAR
+    ========================================== -->
+
+    <header class="navbar">
+
+        <div class="logo">
+            BOSQUE<span>ESPORTES</span>
+        </div>
+
+        <nav>
+            <a class="booking-home-link" href="/">Início</a>
+        </nav>
+
+    </header>
+
+
+    <!-- =========================================
+         LAYOUT PRINCIPAL
+    ========================================== -->
+
+    <main class="dashboard-layout">
+
+
+        <!-- =====================================
+             PAINEL LATERAL
+        ====================================== -->
+
+        <aside class="sidebar-booking">
+
+            <div class="sidebar-heading">
+                <span class="heading-mark"></span>
+                <h2>RESERVA DE HORÁRIO</h2>
+            </div>
+
+            <div class="booking-selection">
+                <div class="form-group">
+                    <label for="select-quadra">Quadra</label>
+                    <select id="select-quadra" class="input-control">
+                        <option value="">Selecione a quadra</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="input-date">Data</label>
+                    <input
+                        type="date"
+                        id="input-date"
+                        class="input-control"
+                    >
+                </div>
+            </div>
+
+            <div class="form-group schedule-group">
+                <div class="schedule-heading">
+                    <span class="schedule-label" id="schedule-label">
+                        Horários disponíveis
+                    </span>
+                    <span>Selecione 1</span>
+                </div>
+
+                <div
+                    id="container-horarios"
+                    aria-live="polite"
+                    aria-labelledby="schedule-label"
+                >
+                    <p class="schedule-empty">
+                        Escolha uma quadra e uma data para ver os horários.
+                    </p>
+                </div>
+            </div>
+
+            <div class="booking-summary">
+                <span class="summary-label">SUA RESERVA</span>
+                <div class="summary-values">
+                    <div>
+                        <span>Quadra</span>
+                        <strong id="display-nome-quadra">—</strong>
+                    </div>
+                    <div>
+                        <span>Horário</span>
+                        <strong id="display-horario">—</strong>
+                    </div>
+                </div>
+            </div>
+
+            <section class="customer-data" aria-labelledby="customer-heading">
+                <h3 id="customer-heading">SEUS DADOS</h3>
+
+                <div class="form-group">
+                    <label for="input-nome">Nome</label>
+                    <input
+                        type="text"
+                        id="input-nome"
+                        class="input-control"
+                        placeholder="Seu nome"
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="input-whatsapp">WhatsApp</label>
+                    <input
+                        type="tel"
+                        id="input-whatsapp"
+                        class="input-control"
+                        placeholder="(41) 99999-9999"
+                        autocomplete="tel"
+                    >
+                </div>
+            </section>
+
+            <button
+                id="btn-avancar"
+                class="btn-primary"
+                type="button"
+            >
+                Solicitar reserva
+            </button>
+        </aside>
+
+        <section class="booking-content" id="booking-content">
+            <header class="content-intro">
+                <span class="eyebrow">BOSQUE ESPORTES · RESERVAS</span>
+                <h1>Seu próximo jogo começa aqui.</h1>
+                <p>
+                    Escolha a quadra, confira os valores e encontre o melhor
+                    horário para jogar.
+                </p>
+            </header>
+
+            <article class="spatial-card" id="spatial-card" data-tipo="">
+                <div class="court-visual" aria-hidden="true">
+                    <img id="display-imagem-quadra" alt="" hidden>
+                    <div class="map-tag tag-free" id="tag-status">
+                        Selecione uma quadra
+                    </div>
+                    <div class="court-lines">
+                        <span class="court-center-line"></span>
+                        <span class="court-center-circle"></span>
+                        <span class="court-area court-area-left"></span>
+                        <span class="court-area court-area-right"></span>
+                    </div>
+                    <div class="visual-caption">
+                        <span>QUADRA SELECIONADA</span>
+                        <strong id="visual-nome-quadra">Escolha sua quadra</strong>
+                    </div>
+                </div>
+
+                <div class="spatial-details">
+                    <span class="court-type" id="display-tipo-quadra">
+                        Modalidade
+                    </span>
+                    <h2 id="display-titulo-quadra">Conheça nosso espaço</h2>
+                    <p id="display-descricao-quadra">
+                        Selecione uma quadra ao lado para conferir os detalhes,
+                        os valores e os horários disponíveis.
+                    </p>
+
+                    <div class="court-measurements">
+                        <span class="detail-icon" aria-hidden="true">↔</span>
+                        <div>
+                            <span>DIMENSÕES</span>
+                            <strong id="display-medidas-quadra">
+                                Informações após selecionar a quadra
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="price-options" aria-label="Valores da quadra">
+                        <div class="price-card">
+                            <span>RESERVA AVULSA</span>
+                            <strong id="display-preco">—</strong>
+                            <small>por hora</small>
+                        </div>
+                        <div class="price-card monthly-price">
+                            <span>PLANO MENSAL</span>
+                            <strong id="display-preco-mensal">—</strong>
+                            <small>por mês</small>
+                        </div>
+                    </div>
+                </div>
+
+            </article>
+
+            <section class="booking-guide" aria-label="Como reservar">
+                <div class="guide-heading">
+                    <span class="eyebrow">SIMPLES E RÁPIDO</span>
+                    <h2>Como fazer sua reserva</h2>
+                </div>
+                <div class="guide-steps">
+                    <article class="guide-step">
+                        <span>01</span>
+                        <div>
+                            <h3>Escolha seu horário</h3>
+                            <p>Selecione a quadra, a data e um horário livre.</p>
+                        </div>
+                    </article>
+                    <article class="guide-step">
+                        <span>02</span>
+                        <div>
+                            <h3>Envie a solicitação</h3>
+                            <p>Preencha seus dados para registrar o pedido.</p>
+                        </div>
+                    </article>
+                    <article class="guide-step">
+                        <span>03</span>
+                        <div>
+                            <h3>Aguarde a confirmação</h3>
+                            <p>O pedido fica pendente até a confirmação da equipe.</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </section>
+
+
+    </main>
+
+
+    <!-- =========================================
+         JAVASCRIPT
+    ========================================== -->
+
+    <script src="/frontend/js/agendamento.js?v=8"></script>
+
+</body>
+
+</html>
