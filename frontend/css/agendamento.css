@@ -28,11 +28,13 @@
 
 .sidebar-booking {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.8rem;
+    width: min(100%, 1040px);
     min-width: 0;
     min-height: 0;
-    padding: 1.1rem clamp(1.25rem, 4vw, 3.5rem) 1.5rem;
+    margin: 0 auto;
+    padding: 1rem clamp(1.25rem, 4vw, 3.5rem) 2rem;
     background: var(--bg-card);
     border-top: 1px solid var(--border-glass);
     backdrop-filter: blur(20px);
@@ -46,7 +48,20 @@
 }
 
 .booking-selection {
+    position: absolute;
+    z-index: 4;
+    top: 1.15rem;
+    right: 1.15rem;
+    left: 1.15rem;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
     max-width: 760px;
+    margin: 0 auto;
+    padding: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 14px;
+    background: rgba(9, 13, 22, 0.58);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(16px) saturate(135%);
 }
 
 .sidebar-heading {
@@ -72,8 +87,12 @@
 
 .booking-selection {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
     gap: 0.7rem;
+}
+
+.booking-selection .form-group label {
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 .form-group {
@@ -107,6 +126,22 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.booking-selection .input-control {
+    height: 46px;
+    border-color: rgba(255, 255, 255, 0.24);
+    color: #fff;
+    background: rgba(9, 13, 22, 0.72);
+}
+
+.booking-selection .input-control:focus {
+    border-color: var(--court-accent, var(--color-sintetico));
+    box-shadow: 0 0 0 3px color-mix(
+        in srgb,
+        var(--court-accent, var(--color-sintetico)) 22%,
+        transparent
+    );
+}
+
 .booking-contact-note {
     margin: -0.35rem 0 0;
     color: var(--text-muted);
@@ -130,6 +165,8 @@
 }
 
 .schedule-group {
+    width: min(100%, 760px);
+    margin: 0 auto;
     gap: 0.45rem;
 }
 
@@ -229,6 +266,8 @@
 }
 
 .booking-summary {
+    width: min(100%, 760px);
+    margin: 0 auto;
     flex-shrink: 0;
     padding: 0.7rem 0.8rem;
     border: 1px solid var(--border-glass);
@@ -270,6 +309,8 @@
 }
 
 .customer-data {
+    width: min(100%, 760px);
+    margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.6rem;
@@ -288,7 +329,9 @@
 
 .btn-primary {
     width: 100%;
+    max-width: 760px;
     min-height: 46px;
+    margin: 0 auto;
     flex-shrink: 0;
     padding: 0.75rem 1rem;
     border: 0;
@@ -369,7 +412,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 260px;
+    min-height: 390px;
     overflow: hidden;
     background:
         radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--court-accent) 23%, transparent), transparent 65%),
@@ -377,28 +420,34 @@
 }
 
 .map-tag {
-    z-index: 2;
+    top: 50%;
+    right: auto;
+    left: 50%;
+    z-index: 3;
+    transform: translate(-50%, -50%);
 }
 
 .court-visual .price-options {
     position: absolute;
     z-index: 2;
-    right: 0.8rem;
-    bottom: 0.8rem;
-    left: 0.8rem;
+    right: max(1rem, calc((100% - 540px) / 2));
+    bottom: 1rem;
+    left: max(1rem, calc((100% - 540px) / 2));
     gap: 0.45rem;
     margin: 0;
 }
 
 .court-visual .price-card {
-    padding: 0.55rem 0.65rem;
-    border-color: color-mix(in srgb, var(--court-accent) 40%, transparent);
-    background: rgba(9, 13, 22, 0.82);
-    backdrop-filter: blur(10px);
+    padding: 0.7rem 0.85rem;
+    border-color: color-mix(in srgb, var(--court-accent) 50%, rgba(255, 255, 255, 0.3));
+    background: rgba(9, 13, 22, 0.48);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(14px) saturate(135%);
 }
 
 .court-visual .price-card strong {
-    font-size: clamp(0.95rem, 1.5vw, 1.2rem);
+    font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
 }
 
 .court-lines {
@@ -424,8 +473,8 @@
     content: "";
     background: linear-gradient(
         180deg,
-        rgba(9, 13, 22, 0.08),
-        rgba(9, 13, 22, 0.48)
+        rgba(9, 13, 22, 0.02),
+        rgba(9, 13, 22, 0.24)
     );
     pointer-events: none;
 }
@@ -570,9 +619,11 @@
 
 .map-tag {
     position: absolute;
-    z-index: 1;
-    top: 1rem;
-    right: 1rem;
+    z-index: 3;
+    top: 50%;
+    right: auto;
+    left: 50%;
+    transform: translate(-50%, -50%);
     padding: 0.36rem 0.65rem;
     border: 1px solid color-mix(in srgb, var(--court-accent) 55%, transparent);
     border-radius: 999px;
@@ -588,7 +639,6 @@
     .booking-content {
         padding: 1.25rem clamp(1rem, 3vw, 2rem);
     }
-
 }
 
 @media (max-width: 900px) {
@@ -600,7 +650,7 @@
     }
 
     .sidebar-booking {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.9rem;
         padding: 1.25rem clamp(1rem, 4vw, 2rem);
     }
@@ -647,7 +697,6 @@
         padding: 0 1rem;
     }
 
-    .booking-selection,
     .schedule-group,
     .booking-summary,
     .customer-data {
@@ -659,32 +708,31 @@
     }
 
     .btn-primary {
-        order: 7;
+        order: 6;
         width: auto;
         margin: 0 1rem;
     }
 
-    .sidebar-booking {
-        grid-template-columns: minmax(0, 1fr);
-        padding: 0;
-    }
-
     .booking-selection {
-        order: 3;
-        grid-column: 1;
+        top: 0.75rem;
+        right: 0.75rem;
+        left: 0.75rem;
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.55rem;
+        padding: 0.65rem;
+        border-radius: 12px;
     }
 
     .schedule-group {
-        order: 4;
+        order: 3;
     }
 
     .booking-summary {
-        order: 5;
+        order: 4;
     }
 
     .customer-data {
-        order: 6;
+        order: 5;
     }
 
     .input-control {
@@ -714,7 +762,29 @@
     }
 
     .court-visual {
-        min-height: 230px;
+        min-height: 410px;
+    }
+
+    .court-visual .price-options {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        left: 0.75rem;
+    }
+
+    .court-visual .price-card {
+        padding: 0.55rem 0.6rem;
+    }
+
+    .court-visual .price-card > span {
+        font-size: 0.52rem;
+    }
+
+    .court-visual .price-card strong {
+        font-size: 1rem;
+    }
+
+    .map-tag {
+        top: 59%;
     }
 
     .court-lines {

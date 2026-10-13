@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elementoMedidasQuadra.textContent =
             'Informações após selecionar a quadra';
         elementoDescricaoQuadra.textContent =
-            'Selecione uma quadra ao lado para conferir os detalhes, os valores e os horários disponíveis.';
+            'Selecione uma quadra acima para conferir os detalhes e os valores.';
         elementoPreco.textContent = '—';
         elementoPrecoMensal.textContent = '—';
         cartaoQuadra.dataset.tipo = '';
