@@ -2347,12 +2347,12 @@ function renderizarAgendamentos() {
 
         tr.innerHTML = `
 
-            <td>
+            <td data-label="ID">
                 ${agendamento.id}
             </td>
 
 
-            <td>
+            <td data-label="Cliente">
 
                 <strong>
                     ${escaparHTML(
@@ -2370,7 +2370,7 @@ function renderizarAgendamentos() {
             </td>
 
 
-            <td>
+            <td data-label="Contato">
 
                 ${
                     contato
@@ -2392,53 +2392,53 @@ function renderizarAgendamentos() {
             </td>
 
 
-            <td>
+            <td data-label="Quadra">
                 ${escaparHTML(
                     agendamento.quadra
                 )}
             </td>
 
 
-            <td>
+            <td data-label="Data">
                 ${formatarData(
                     agendamento.data
                 )}
             </td>
 
 
-            <td>
+            <td data-label="Horário">
                 ${formatarHorario(
                     agendamento.horario
                 )}
             </td>
 
 
-            <td>
+            <td data-label="Valor total">
                 ${formatarMoeda(agendamento.valor_hora)}
             </td>
 
 
-            <td>
+            <td data-label="Taxa">
                 ${formatarMoeda(agendamento.taxa_reserva || 0)}
             </td>
 
 
-            <td>
+            <td data-label="Recebido">
                 ${formatarMoeda(agendamento.valor_pago || 0)}
             </td>
 
 
-            <td>
+            <td data-label="Devido">
                 ${formatarMoeda(agendamento.saldo_pendente || 0)}
             </td>
 
 
-            <td>
+            <td data-label="Status">
                 ${controleStatus}
             </td>
 
 
-            <td>
+            <td data-label="Ação">
                 ${
                     ['Pendente', 'Confirmado'].includes(agendamento.status)
                         ? `<button type="button" data-receber-agendamento

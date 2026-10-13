@@ -108,6 +108,16 @@
     box-shadow: 0 0 0 2px rgba(0, 255, 102, 0.08);
 }
 
+.input-control[type="date"] {
+    color-scheme: dark;
+}
+
+.input-control[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.95;
+    cursor: pointer;
+}
+
 .schedule-group {
     gap: 0.45rem;
 }
@@ -689,10 +699,70 @@
 
     .dashboard-layout {
         padding-top: 4.5rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.8rem;
+    }
+
+    .sidebar-booking,
+    .booking-content {
+        display: contents;
+    }
+
+    .content-intro {
+        order: 0;
+        padding: 0 1rem;
+    }
+
+    .spatial-card {
+        order: 1;
+        margin: 0 1rem;
+    }
+
+    .sidebar-heading {
+        order: 2;
+        padding: 0 1rem;
+    }
+
+    .booking-selection,
+    .schedule-group,
+    .booking-summary,
+    .customer-data {
+        margin: 0 1rem;
+        padding: 0.85rem;
+        border: 1px solid var(--border-glass);
+        border-radius: 10px;
+        background: var(--bg-card);
+    }
+
+    .booking-selection {
+        order: 3;
+    }
+
+    .schedule-group {
+        order: 4;
+    }
+
+    .booking-summary {
+        order: 5;
+    }
+
+    .customer-data {
+        order: 6;
+    }
+
+    .btn-primary {
+        order: 7;
+        width: auto;
+        margin: 0 1rem;
+    }
+
+    .booking-guide {
+        display: none;
     }
 
     .sidebar-booking {
-        padding: 1rem;
+        padding: 0;
     }
 
     .booking-selection {
@@ -725,10 +795,6 @@
         grid-column: 1;
     }
 
-    .booking-content {
-        padding: 1.25rem 1rem 2rem;
-    }
-
     .content-intro h1 {
         font-size: 1.85rem;
     }
@@ -739,6 +805,10 @@
 
     .spatial-card {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .visual-caption {
+        display: none;
     }
 
     .court-visual {

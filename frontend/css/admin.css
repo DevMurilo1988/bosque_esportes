@@ -1474,15 +1474,62 @@ tr:hover td {
 @media (max-width: 700px) {
 
     .admin-header {
-        padding: 20px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .header-logo {
+        grid-column: 1 / -1;
+    }
+
+    .header-logo h1 {
+        font-size: 20px;
+    }
+
+    .admin-header .btn-home {
+        display: flex;
+        min-width: 0;
+        min-height: 42px;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+        text-align: center;
+    }
+
+    .admin-header .admin-court-scope {
+        grid-column: 1 / -1;
+        justify-content: space-between;
+    }
+
+    .admin-header .admin-court-scope select {
+        flex: 1;
+        min-width: 0;
     }
 
     .admin-container {
-        padding: 20px;
+        padding: 16px;
     }
 
     .resumo {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .resumo-card {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .resumo-card span {
+        margin-bottom: 4px;
+        font-size: 12px;
+    }
+
+    .resumo-card strong {
+        font-size: 24px;
     }
 
     .admin-menu {
@@ -1632,4 +1679,91 @@ tr:hover td {
         font-size: 12px;
     }
 
+}
+
+@media (max-width: 700px) {
+    .filtro input[type="date"] {
+        color-scheme: dark;
+    }
+
+    .filtro input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        opacity: 0.95;
+        cursor: pointer;
+    }
+
+    .agendamentos-table,
+    .agendamentos-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .agendamentos-table thead {
+        display: none;
+    }
+
+    .agendamentos-table tbody {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .agendamentos-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
+        padding: 14px;
+        border: 1px solid #303640;
+        border-radius: 12px;
+        background: #181b20;
+    }
+
+    .agendamentos-table tbody tr:hover td {
+        background: transparent;
+    }
+
+    .agendamentos-table tbody td {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 4px 0;
+        border: 0;
+        font-size: 13px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .agendamentos-table tbody td::before {
+        flex: 0 0 auto;
+        color: #8f969f;
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .agendamentos-table tbody td:nth-child(2) {
+        grid-column: 1 / -1;
+        display: block;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #303640;
+    }
+
+    .agendamentos-table tbody td:nth-child(2)::before {
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .agendamentos-table tbody td:nth-child(11),
+    .agendamentos-table tbody td:nth-child(12) {
+        align-items: center;
+        padding-top: 8px;
+        border-top: 1px solid #303640;
+    }
+
+    .agendamentos-table .status-select,
+    .agendamentos-table [data-receber-agendamento] {
+        max-width: 100%;
+    }
 }
