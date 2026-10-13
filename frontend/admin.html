@@ -14,7 +14,7 @@
 
     <link
         rel="stylesheet"
-        href="/frontend/css/admin.css?v=10"
+        href="/frontend/css/admin.css?v=11"
     >
 
 </head>
@@ -105,7 +105,7 @@
             <div class="resumo-card">
 
                 <span>
-                    Total
+                    Avulsas · total
                 </span>
 
                 <strong id="total-agendamentos">
@@ -118,7 +118,7 @@
             <div class="resumo-card pendente">
 
                 <span>
-                    Pendentes
+                    Avulsas · pendentes
                 </span>
 
                 <strong id="total-pendentes">
@@ -131,7 +131,7 @@
             <div class="resumo-card confirmado">
 
                 <span>
-                    Confirmados
+                    Avulsas · confirmadas
                 </span>
 
                 <strong id="total-confirmados">
@@ -144,7 +144,7 @@
             <div class="resumo-card cancelado">
 
                 <span>
-                    Cancelados
+                    Avulsas · canceladas
                 </span>
 
                 <strong id="total-cancelados">
@@ -154,6 +154,16 @@
             </div>
 
 
+        </section>
+
+        <section class="modality-summary-panel" aria-labelledby="modality-summary-title">
+            <div class="modality-summary-heading">
+                <h2 id="modality-summary-title">Reservas por modalidade</h2>
+                <strong id="modality-summary-total">Carregando...</strong>
+            </div>
+            <p class="report-description">Mensais conta contratos recorrentes; o total de ocorrências previstas aparece nos relatórios do período.</p>
+            <div id="resumo-modalidades-admin" class="modality-summary-grid"
+                aria-live="polite"></div>
         </section>
 
 
@@ -498,6 +508,7 @@
                     <div class="form-field">
                         <label for="pagamento-valor">Valor recebido</label>
                         <input id="pagamento-valor" type="number" min="0" step="0.01" value="0">
+                        <small>Para mensalidades, o valor total do mês é preenchido como pagamento antecipado; edite somente em caso de exceção.</small>
                     </div>
                     <div class="form-field">
                         <label for="pagamento-status">Status</label>
@@ -652,6 +663,11 @@
                     <article class="report-card report-card-chart">
                         <h3>Status das reservas no período</h3>
                         <div id="relatorio-funil"></div>
+                    </article>
+                    <article class="report-card">
+                        <h3>Avulsas e recorrentes por situação</h3>
+                        <p class="report-description">Mensais conta contratos que cruzam o período; ocorrências são os horários recorrentes previstos.</p>
+                        <div id="relatorio-modalidades"></div>
                     </article>
                     <article class="report-card report-card-chart report-card-wide">
                         <h3>Solicitações por data reservada</h3>
@@ -989,15 +1005,17 @@
                     <div class="form-field">
 
                         <label for="mensalista-valor">
-                            Valor mensal da quadra
+                            Valor mensal antecipado
                         </label>
 
                         <input
-                            type="text"
+                            type="number"
                             id="mensalista-valor"
-                            value="Selecione uma quadra"
-                            readonly
+                            min="0"
+                            step="0.01"
+                            placeholder="Selecione uma quadra"
                         >
+                        <small>Preenchido pelo valor mensal da quadra. O total é antecipado; altere somente em caso de exceção.</small>
 
                     </div>
 
@@ -1365,7 +1383,7 @@
 
     </div>
 
-    <script src="/frontend/js/admin.js?v=10"></script>
+    <script src="/frontend/js/admin.js?v=11"></script>
 
 </body>
 

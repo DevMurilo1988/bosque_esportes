@@ -25,11 +25,12 @@ PERMISSÕES POR QUADRA E CONTEÚDO DO SITE
 
 PAGAMENTOS E MIGRAÇÕES
     - Pagamentos operacionais ficam relacionados à reserva ou mensalidade e mantêm histórico de status.
-    - Para mensalidades recorrentes, cada pagamento informa a competência no formato AAAA-MM; pagamentos da mesma competência respeitam o valor mensal cadastrado.
+    - Para mensalidades recorrentes, cada pagamento informa a competência no formato AAAA-MM e é antecipado pelo valor mensal integral; o painel preenche esse total automaticamente e permite editá-lo apenas para exceções. Pagamentos da mesma competência respeitam o valor mensal cadastrado.
     - Em bancos existentes, aplicar em ordem: backend/migrations/20260929_operational_finance_auth.sql, backend/migrations/20260929_pagamento_valor_pago.sql, backend/migrations/20260929_pagamento_competencia.sql e backend/migrations/20260929_admin_permissoes.sql. A primeira migração não cria `valor_pago`; a seguinte adiciona essa coluna.
     - Aplicar também backend/migrations/20261013_pagamento_recebimentos_incrementais.sql em bancos existentes. Ela cria o razão de parcelas recebidas e preserva cada total anterior como um lançamento histórico consolidado; pagamentos futuros são lançados separadamente com data/hora, usuário, método e observações.
     - O painel recebe cada parcela como valor incremental e atualiza o saldo de forma transacional; não se deve substituir o valor acumulado do pagamento.
-    - Solicitações mensais feitas pelo site são recorrentes semanais e começam pendentes; a aprovação administrativa valida conflitos antes de ativar o horário.
+    - Solicitações mensais feitas pelo site são recorrentes semanais e começam pendentes; a aprovação administrativa valida conflitos antes de ativar o horário. O valor mensal padrão vem do cadastro da quadra, mas o operador pode informar uma exceção no formulário ou ao aprovar.
+    - O painel inicial resume reservas avulsas e contratos mensais por situação. Relatórios por período separam os status de reservas avulsas e mensalidades e estimam as ocorrências semanais dos contratos que cruzam o intervalo selecionado.
     - A criação do primeiro administrador é feita localmente com backend/create_admin.py. A senha não deve ser armazenada no frontend.
     - Aplicar backend/migrations/20260929_admin_permissoes.sql para ativar permissões administrativas independentes por módulo. A conta inicial criada por backend/create_admin.py recebe nível `root`; apenas ela pode criar contas administrativas e definir acessos. Usuários comuns têm permissões de visualização e edição controladas por módulo.
     - O endpoint público `/configuracoes` retorna apenas horários de funcionamento e regras da fila. A lista integral, incluindo taxas e dados administrativos, exige sessão em `/admin/configuracoes`.

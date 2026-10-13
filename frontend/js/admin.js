@@ -34,6 +34,7 @@ window.fetch = (input, options) => {
         '/clientes',
         '/jogos',
         '/relatorios',
+        '/admin/resumo-reservas',
         '/quadras/'
     ].some(prefixo => url.pathname === prefixo || url.pathname.startsWith(`${prefixo}/`));
     if (aplicaEscopo) {
@@ -335,6 +336,10 @@ function aplicarPermissoesPainel() {
 
     const resumo = document.querySelector('.admin-container > .resumo');
     if (resumo) resumo.hidden = !temPermissaoAdmin('agendamentos');
+    const resumoModalidades = document.querySelector('.modality-summary-panel');
+    if (resumoModalidades) {
+        resumoModalidades.hidden = !temPermissaoAdmin('agendamentos');
+    }
 }
 
 
@@ -615,6 +620,8 @@ function configurarPagamentos() {
     atualizarFormularioPagamento();
     document.getElementById('pagamento-competencia').value =
         dataLocalISO(new Date()).slice(0, 7);
+    document.getElementById('pagamento-data').value =
+        dataLocalISO(new Date());
 
 }
 
@@ -695,6 +702,13 @@ function preencherValorPagamento() {
         registro
             ? Number(ehMensalidade ? registro.valor_mensal : registro.taxa_reserva || 0)
             : 0;
+
+    if (registro) {
+        document.getElementById('pagamento-status').value =
+            ehMensalidade && Number(registro.valor_mensal) > 0
+                ? 'Recebido'
+                : 'Pendente';
+    }
 
 }
 
@@ -1134,6 +1148,7 @@ async function carregarRelatorios() {
             throw new Error(data.detail || 'Erro ao consultar relatórios.');
         }
         renderizarResumoRelatorio(data.resumo);
+        renderizarResumoModalidadesRelatorio(data.modalidades);
         renderizarGraficoBarras(
             'grafico-reservas',
             data.reservas_por_periodo,
@@ -1186,6 +1201,53 @@ async function carregarRelatorios() {
             erro.message;
     }
 
+}
+
+function renderizarResumoModalidadesRelatorio(modalidades) {
+    const avulsas = modalidades.avulsas;
+    const mensais = modalidades.mensais;
+    const ocorrencias = mensais.ocorrencias;
+    renderizarTablaReporte(
+        'relatorio-modalidades',
+        [
+            ['Modalidade', item => escaparHTML(item.modalidade)],
+            ['Total', item => Number(item.total)],
+            ['Pendentes', item => Number(item.pendentes)],
+            ['Confirmadas / ativas', item => Number(item.confirmadasAtivas)],
+            ['Canceladas', item => Number(item.canceladas)],
+            ['Não atendidas', item => Number(item.naoAtendidas)],
+            ['Encerradas', item => Number(item.encerradas)],
+            ['Outras situações', item => Number(item.outros)],
+            ['Ocorrências no período', item => Number(item.ocorrencias)]
+        ],
+        [
+            {
+                modalidade: 'Avulsas',
+                total: avulsas.total,
+                pendentes: avulsas.pendente,
+                confirmadasAtivas: avulsas.confirmado,
+                canceladas: avulsas.cancelado,
+                naoAtendidas: avulsas.nao_atendido,
+                encerradas: 0,
+                outros: avulsas.outros,
+                ocorrencias: 0
+            },
+            {
+                modalidade: 'Mensais recorrentes',
+                total: mensais.total,
+                pendentes: mensais.status.Pendente,
+                confirmadasAtivas: mensais.status.Ativa,
+                canceladas: 0,
+                naoAtendidas: 0,
+                encerradas: mensais.status.Encerrada,
+                outros: mensais.status.outros,
+                ocorrencias: Object.values(ocorrencias).reduce(
+                    (soma, quantidade) => soma + Number(quantidade || 0),
+                    0
+                )
+            }
+        ]
+    );
 }
 
 function renderizarResumoRelatorio(resumo) {
@@ -2195,6 +2257,7 @@ async function carregarAgendamentos() {
         preencherFiltroQuadras();
         renderizarAgendamentos();
         atualizarResumo();
+        carregarResumoModalidades();
 
     } catch (erro) {
 
@@ -2207,6 +2270,55 @@ async function carregarAgendamentos() {
 
     }
 
+}
+
+async function carregarResumoModalidades() {
+    const container = document.getElementById('resumo-modalidades-admin');
+    const total = document.getElementById('modality-summary-total');
+    if (!container || !total) return;
+
+    try {
+        const resposta = await fetch('/admin/resumo-reservas');
+        const dados = await resposta.json();
+        if (!resposta.ok) {
+            throw new Error(dados.detail || 'Erro ao carregar o resumo das reservas.');
+        }
+
+        total.textContent = `Total: ${dados.total}`;
+        const grupos = [
+            {
+                titulo: `Avulsas · ${dados.avulsas.total}`,
+                itens: [
+                    ['Pendentes', dados.avulsas.pendente],
+                    ['Confirmadas', dados.avulsas.confirmado],
+                    ['Canceladas', dados.avulsas.cancelado],
+                    ['Não atendidas', dados.avulsas.nao_atendido],
+                    ...(dados.avulsas.outros ? [['Outras situações', dados.avulsas.outros]] : [])
+                ]
+            },
+            {
+                titulo: `Mensais · ${dados.mensais.total}`,
+                itens: [
+                    ['Pendentes', dados.mensais.pendente],
+                    ['Ativas', dados.mensais.ativa],
+                    ['Encerradas', dados.mensais.encerrada],
+                    ...(dados.mensais.outros ? [['Outras situações', dados.mensais.outros]] : [])
+                ]
+            }
+        ];
+        container.innerHTML = grupos.map(grupo => `
+            <article class="modality-summary-card">
+                <h3>${escaparHTML(grupo.titulo)}</h3>
+                <dl>${grupo.itens.map(([label, value]) => `
+                    <div><dt>${escaparHTML(label)}</dt><dd>${Number(value)}</dd></div>
+                `).join('')}</dl>
+            </article>
+        `).join('');
+    } catch (erro) {
+        console.error(erro);
+        total.textContent = 'Resumo indisponível';
+        container.textContent = erro.message;
+    }
 }
 
 
@@ -3330,8 +3442,8 @@ function mostrarValorMensalQuadra() {
 
     if (!quadra) {
 
-        campoValor.value =
-            'Selecione uma quadra';
+        campoValor.value = '';
+        campoValor.placeholder = 'Selecione uma quadra';
 
         return;
 
@@ -3344,18 +3456,16 @@ function mostrarValorMensalQuadra() {
         Number(quadra.valor_mensal) <= 0
     ) {
 
-        campoValor.value =
-            'Não configurado';
+        campoValor.value = '';
+        campoValor.placeholder = 'Informe o valor mensal';
 
         return;
 
     }
 
 
-    campoValor.value =
-        formatarMoeda(
-            quadra.valor_mensal
-        );
+    campoValor.value = Number(quadra.valor_mensal).toFixed(2);
+    campoValor.placeholder = '';
 
 }
 
@@ -3482,8 +3592,7 @@ function limparFormularioMensalista() {
 
 
     if (valor) {
-        valor.value =
-            'Selecione uma quadra';
+        valor.value = '';
     }
 
 
@@ -3545,6 +3654,10 @@ async function salvarMensalista() {
         document.getElementById(
             'mensalista-observacao'
         ).value;
+    const valorMensal =
+        Number(document.getElementById('mensalista-valor').value);
+    const valorMensalInformado =
+        document.getElementById('mensalista-valor').value.trim();
 
 
     if (!clienteId) {
@@ -3614,15 +3727,15 @@ async function salvarMensalista() {
         );
 
 
-    if (
-        !quadra ||
-        quadra.valor_mensal === null ||
-        quadra.valor_mensal === undefined ||
-        Number(quadra.valor_mensal) <= 0
-    ) {
+    if (!quadra) {
+        alert('Quadra não encontrada.');
+        return;
+    }
+
+    if (!valorMensalInformado || !Number.isFinite(valorMensal) || valorMensal < 0) {
 
         alert(
-            'Configure o valor mensal desta quadra antes de criar o mensalista.'
+            'Informe um valor mensal antecipado válido.'
         );
 
         return;
@@ -3668,6 +3781,9 @@ async function salvarMensalista() {
 
         data_inicio:
             dataInicio,
+
+        valor_mensal:
+            valorMensal,
 
         observacao:
             observacao || null
@@ -3810,11 +3926,30 @@ async function encerrarMensalidade(id) {
 }
 
 async function ativarMensalidade(id) {
+    const mensalidade = mensalistas.find(item => Number(item.id) === Number(id));
+    if (!mensalidade) {
+        alert('Mensalidade não encontrada. Atualize a lista e tente novamente.');
+        return;
+    }
+    const valorInformado = prompt(
+        'Confirme o valor mensal pago antecipadamente. O valor atual vem preenchido; altere somente em caso de exceção.',
+        Number(mensalidade.valor_mensal || 0).toFixed(2)
+    );
+    if (valorInformado === null) return;
+    const valorNormalizado = valorInformado.trim().includes(',')
+        ? valorInformado.trim().replace(/\./g, '').replace(',', '.')
+        : valorInformado.trim();
+    const valorMensal = Number(valorNormalizado);
+    if (!Number.isFinite(valorMensal) || valorMensal < 0) {
+        alert('Informe um valor mensal válido, igual ou maior que zero.');
+        return;
+    }
+
     try {
         const resposta = await fetch(`/mensalidades/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({status: 'Ativa'})
+            body: JSON.stringify({status: 'Ativa', valor_mensal: valorMensal})
         });
         const resultado = await resposta.json();
         if (!resposta.ok) {

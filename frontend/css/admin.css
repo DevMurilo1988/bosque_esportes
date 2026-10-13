@@ -558,6 +558,72 @@ body {
     border-left: 4px solid #e55353;
 }
 
+.modality-summary-panel {
+    margin: -8px 0 24px;
+    padding: 16px;
+    border: 1px solid #292d34;
+    border-radius: 12px;
+    background: #14171b;
+}
+
+.modality-summary-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.modality-summary-heading h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.modality-summary-heading > strong {
+    color: #38c172;
+    font-size: 0.9rem;
+}
+
+.modality-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.modality-summary-card {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #292d34;
+    border-radius: 10px;
+    background: #181b20;
+}
+
+.modality-summary-card h3 {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+}
+
+.modality-summary-card dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 14px;
+    margin: 0;
+}
+
+.modality-summary-card dl div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: #aeb4bd;
+    font-size: 0.78rem;
+}
+
+.modality-summary-card dd {
+    margin: 0;
+    color: #fff;
+    font-weight: 700;
+}
+
 
 /* ========================= */
 /* MENU */
@@ -1693,6 +1759,19 @@ tr:hover td {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
         margin-bottom: 16px;
+    }
+
+    .modality-summary-panel {
+        margin-top: -8px;
+        padding: 12px;
+    }
+
+    .modality-summary-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .modality-summary-card {
+        padding: 12px;
     }
 
     .resumo-card {

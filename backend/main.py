@@ -118,6 +118,8 @@ def modulo_da_rota_admin(caminho):
         return "quadras"
     if caminho.startswith("/jogos"):
         return "agendamentos"
+    if caminho == "/admin/resumo-reservas":
+        return "agendamentos"
     if caminho.startswith("/admin/usuarios"):
         return "usuarios"
     if caminho.startswith("/admin/configuracoes") or caminho.startswith("/configuracoes/"):
@@ -327,6 +329,7 @@ async def proteger_rotas_administrativas(request: Request, call_next):
         tem_escopo_de_quadra = (
             caminho in rotas_filtradas
             or caminho.startswith((
+                "/admin/resumo-reservas/",
                 "/agendamentos/",
                 "/mensalidades/",
                 "/pagamentos/",
@@ -527,6 +530,26 @@ def normalizar_telefone_whatsapp(contato):
     if 12 <= len(telefone) <= 15:
         return telefone
     return None
+
+
+def resolver_valor_mensal(valor_configurado, valor_personalizado):
+    valor_padrao = float(valor_configurado or 0)
+    if valor_personalizado is None and valor_padrao <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="O valor mensal desta modalidade não está configurado."
+        )
+    valor = (
+        valor_personalizado
+        if valor_personalizado is not None
+        else valor_padrao
+    )
+    if not math.isfinite(valor) or valor < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe um valor mensal válido."
+        )
+    return valor
 
 
 def enviar_mensagem_telegram(chat_id, mensagem):
@@ -890,13 +913,22 @@ class NovaMensalidade(BaseModel):
     dia_semana: int
     horario: str
     data_inicio: str
+    valor_mensal: Optional[float] = Field(
+        default=None,
+        ge=0,
+        allow_inf_nan=False
+    )
     observacao: Optional[str] = None
     data_encerramento: Optional[str] = None
 
 
 class AtualizarMensalidade(BaseModel):
     status: str
-    valor_mensal: Optional[float] = None
+    valor_mensal: Optional[float] = Field(
+        default=None,
+        ge=0,
+        allow_inf_nan=False
+    )
     observacao: Optional[str] = None
     data_encerramento: Optional[str] = None
 
@@ -2814,6 +2846,106 @@ def atualizar_status_agendamento(
 
 
 # =========================================================
+# RESUMO DE RESERVAS POR MODALIDADE
+# =========================================================
+
+@app.get("/admin/resumo-reservas")
+def obter_resumo_reservas_admin(
+    request: Request,
+    quadra_id: Optional[int] = None
+):
+    conexao = conectar_banco()
+    cursor = conexao.cursor()
+    try:
+        filtro_quadras = "1 = 1"
+        parametros_quadras = []
+        if quadra_id is not None:
+            if (
+                request.state.nivel_admin != "root"
+                and quadra_id not in request.state.quadras_permitidas
+            ):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Você não tem acesso a esta quadra."
+                )
+            filtro_quadras = "quadra_id = %s"
+            parametros_quadras = [quadra_id]
+        elif request.state.nivel_admin != "root":
+            quadras_permitidas = request.state.quadras_permitidas
+            if not quadras_permitidas:
+                return {
+                    "total": 0,
+                    "avulsas": {"total": 0, "pendente": 0, "confirmado": 0,
+                                "cancelado": 0, "nao_atendido": 0, "outros": 0},
+                    "mensais": {"total": 0, "pendente": 0, "ativa": 0,
+                                "encerrada": 0, "outros": 0}
+                }
+            placeholders = ", ".join(["%s"] * len(quadras_permitidas))
+            filtro_quadras = f"quadra_id IN ({placeholders})"
+            parametros_quadras = quadras_permitidas
+
+        cursor.execute(
+            f"""
+            SELECT status, COUNT(*)
+            FROM agendamento
+            WHERE {filtro_quadras}
+            GROUP BY status
+            """,
+            parametros_quadras
+        )
+        status_avulsas = {
+            status: int(total or 0)
+            for status, total in cursor.fetchall()
+        }
+        cursor.execute(
+            f"""
+            SELECT status, COUNT(*)
+            FROM mensalidade
+            WHERE {filtro_quadras}
+            GROUP BY status
+            """,
+            parametros_quadras
+        )
+        status_mensais = {
+            status: int(total or 0)
+            for status, total in cursor.fetchall()
+        }
+        avulsas = {
+            "total": sum(status_avulsas.values()),
+            "pendente": status_avulsas.get("Pendente", 0),
+            "confirmado": status_avulsas.get("Confirmado", 0),
+            "cancelado": status_avulsas.get("Cancelado", 0),
+            "nao_atendido": status_avulsas.get("Não atendido", 0),
+            "outros": sum(
+                total
+                for status, total in status_avulsas.items()
+                if status not in {
+                    "Pendente", "Confirmado", "Cancelado", "Não atendido"
+                }
+            )
+        }
+        mensais = {
+            "total": sum(status_mensais.values()),
+            "pendente": status_mensais.get("Pendente", 0),
+            "ativa": status_mensais.get("Ativa", 0),
+            "encerrada": status_mensais.get("Encerrada", 0),
+            "outros": sum(
+                total
+                for status, total in status_mensais.items()
+                if status not in {"Pendente", "Ativa", "Encerrada"}
+            )
+        }
+        return {
+            "total": avulsas["total"] + mensais["total"],
+            "avulsas": avulsas,
+            "mensais": mensais
+        }
+    finally:
+        cursor.close()
+        conexao.close()
+
+
+# =========================================================
 # MENSALIDADES
 # =========================================================
 
@@ -2983,17 +3115,10 @@ def criar_mensalidade(
         # BUSCA VALOR MENSAL AUTOMATICAMENTE
         # -------------------------------------------------
 
-        valor_mensal = float(quadra[2] or 0)
-
-        if valor_mensal <= 0:
-
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "O valor mensal desta modalidade "
-                    "não está configurado."
-                )
-            )
+        valor_mensal = resolver_valor_mensal(
+            quadra[2],
+            dados.valor_mensal
+        )
 
         # -------------------------------------------------
         # VERIFICA CONFLITO
@@ -3272,6 +3397,15 @@ def atualizar_mensalidade(
     mensalidade_id: int,
     dados: AtualizarMensalidade
 ):
+
+    if (
+        dados.valor_mensal is not None
+        and not math.isfinite(dados.valor_mensal)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Informe um valor mensal válido."
+        )
 
     status_validos = ["Pendente", "Ativa", "Encerrada"]
 
@@ -5219,6 +5353,9 @@ def obter_relatorios(
                 SUM(a.status = 'Pendente') AS pendentes,
                 SUM(a.status = 'Cancelado') AS canceladas,
                 SUM(a.status = 'Não atendido') AS nao_atendidas,
+                SUM(a.status NOT IN (
+                    'Confirmado', 'Pendente', 'Cancelado', 'Não atendido'
+                )) AS outros,
                 COUNT(DISTINCT a.cliente_id) AS clientes
             FROM agendamento a
             INNER JOIN quadra q ON q.id = a.quadra_id
@@ -5233,7 +5370,67 @@ def obter_relatorios(
             "pendentes": int(row[2] or 0),
             "canceladas": int(row[3] or 0),
             "nao_atendidas": int(row[4] or 0),
-            "clientes": int(row[5] or 0)
+            "outros": int(row[5] or 0),
+            "clientes": int(row[6] or 0)
+        }
+
+        filtros_mensalidades = [
+            "m.data_inicio <= %s",
+            "(m.data_encerramento IS NULL OR m.data_encerramento >= %s)"
+        ]
+        parametros_mensalidades = [data_fim, data_inicio]
+        if quadra_id is not None:
+            filtros_mensalidades.append("m.quadra_id = %s")
+            parametros_mensalidades.append(quadra_id)
+        if tipo_quad:
+            filtros_mensalidades.append("q.tipo = %s")
+            parametros_mensalidades.append(tipo_quad)
+        cursor.execute(
+            f"""
+            SELECT m.status, m.dia_semana, m.data_inicio, m.data_encerramento
+            FROM mensalidade m
+            INNER JOIN quadra q ON q.id = m.quadra_id
+            WHERE {" AND ".join(filtros_mensalidades)}
+            """,
+            parametros_mensalidades
+        )
+        mensalidades_no_periodo = cursor.fetchall()
+        status_mensais = {
+            "Pendente": 0,
+            "Ativa": 0,
+            "Encerrada": 0,
+            "outros": 0
+        }
+        ocorrencias_mensais = {
+            "Pendente": 0,
+            "Ativa": 0,
+            "Encerrada": 0,
+            "outros": 0
+        }
+        for status, dia_semana, inicio_mensalidade, fim_mensalidade in mensalidades_no_periodo:
+            chave_status = status if status in status_mensais else "outros"
+            status_mensais[chave_status] += 1
+            inicio_ocorrencia = max(data_inicio, inicio_mensalidade)
+            fim_ocorrencia = min(data_fim, fim_mensalidade or data_fim)
+            for offset in range((fim_ocorrencia - inicio_ocorrencia).days + 1):
+                dia = inicio_ocorrencia + timedelta(days=offset)
+                if (dia.weekday() + 1) % 7 == int(dia_semana):
+                    ocorrencias_mensais[chave_status] += 1
+
+        modalidades = {
+            "avulsas": {
+                "total": resumo["reservas"],
+                "pendente": resumo["pendentes"],
+                "confirmado": resumo["confirmadas"],
+                "cancelado": resumo["canceladas"],
+                "nao_atendido": resumo["nao_atendidas"],
+                "outros": resumo["outros"]
+            },
+            "mensais": {
+                "total": len(mensalidades_no_periodo),
+                "status": status_mensais,
+                "ocorrencias": ocorrencias_mensais
+            }
         }
 
         dias_periodo = (data_fim - data_inicio).days + 1
@@ -5666,6 +5863,7 @@ def obter_relatorios(
             "inicio": data_inicio.isoformat(),
             "fim": data_fim.isoformat(),
             "resumo": resumo,
+            "modalidades": modalidades,
             "reservas_por_periodo": reservas_periodo,
             "utilizacao_quadras": uso_quadras,
             "pagamentos_por_periodo": pagamentos_periodo,
