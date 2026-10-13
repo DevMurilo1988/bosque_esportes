@@ -1,6 +1,7 @@
 import calendar
 import hashlib
 import hmac
+import html
 import json
 import logging
 import os
@@ -9,7 +10,9 @@ import secrets
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
+from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode
+from urllib.request import Request as URLRequest, urlopen
 
 import mysql.connector
 from dotenv import load_dotenv
@@ -504,6 +507,318 @@ def conectar_banco():
     return mysql.connector.connect(**options)
 
 
+def normalizar_telefone_whatsapp(contato):
+    contato_original = str(contato or "").strip()
+    telefone = re.sub(r"\D", "", contato_original)
+
+    if contato_original.startswith("+"):
+        return telefone if 8 <= len(telefone) <= 15 else None
+    if contato_original.startswith("00"):
+        telefone = telefone[2:]
+        return telefone if 8 <= len(telefone) <= 15 else None
+    if telefone.startswith("55") and len(telefone) in (12, 13):
+        return telefone
+    if len(telefone) in (10, 11):
+        return f"55{telefone}"
+    if 12 <= len(telefone) <= 15:
+        return telefone
+    return None
+
+
+def enviar_mensagem_telegram(chat_id, mensagem):
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        logger.error("Telegram bot token is not configured.")
+        raise HTTPException(
+            status_code=503,
+            detail="As notificações do Telegram não estão configuradas."
+        )
+
+    partes = []
+    parte_atual = ""
+    for linha in mensagem.splitlines():
+        if parte_atual and len(parte_atual) + len(linha) + 1 > 3500:
+            partes.append(parte_atual)
+            parte_atual = ""
+        parte_atual = f"{parte_atual}\n{linha}".strip()
+    if parte_atual:
+        partes.append(parte_atual)
+
+    for parte in partes:
+        requisicao = URLRequest(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data=json.dumps({
+                "chat_id": chat_id,
+                "text": parte,
+                "parse_mode": "HTML"
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        try:
+            with urlopen(requisicao, timeout=10) as resposta:
+                resultado = json.loads(resposta.read().decode("utf-8"))
+        except HTTPError as erro:
+            try:
+                corpo_erro = json.loads(
+                    erro.read().decode("utf-8")
+                )
+                detalhe_erro = (
+                    corpo_erro.get("description")
+                    if isinstance(corpo_erro, dict)
+                    else None
+                )
+            except (OSError, UnicodeDecodeError, ValueError):
+                detalhe_erro = None
+            logger.error(
+                "Telegram notification failed with HTTP status %s: %s",
+                erro.code,
+                str(detalhe_erro or "no response details")[:300]
+            )
+            raise HTTPException(
+                status_code=502,
+                detail="O Telegram não aceitou a notificação. Tente novamente."
+            ) from None
+        except (URLError, TimeoutError, OSError, ValueError):
+            logger.error("Telegram notification could not be delivered.")
+            raise HTTPException(
+                status_code=502,
+                detail="Não foi possível entregar a notificação pelo Telegram."
+            ) from None
+
+        if not isinstance(resultado, dict) or not resultado.get("ok"):
+            detalhe_erro = (
+                resultado.get("description")
+                if isinstance(resultado, dict)
+                else None
+            )
+            logger.error(
+                "Telegram rejected a notification: %s",
+                str(detalhe_erro or "no response details")[:300]
+            )
+            raise HTTPException(
+                status_code=502,
+                detail="O Telegram não aceitou a notificação."
+            )
+
+
+def obter_chat_telegram(variavel):
+    chat_id = os.getenv(variavel, "").strip()
+    if variavel == "TELEGRAM_ADMIN_CHAT_ID" and not chat_id:
+        chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if not chat_id:
+        logger.error("%s is not configured.", variavel)
+        raise HTTPException(
+            status_code=503,
+            detail="Os chats de notificação do Telegram não estão configurados."
+        )
+    return chat_id
+
+
+def enviar_notificacao_telegram_reserva(cursor, data_reserva):
+    cursor.execute(
+        """
+        SELECT q.id, q.nome, a.horario, a.status,
+               CASE
+                   WHEN c.garantia_reserva = 'Obrigatório'
+                   THEN COALESCE(NULLIF(a.taxa_reserva, 0), q.taxa_reserva, 0)
+                   ELSE 0
+               END AS taxa_reserva,
+               c.nome, c.contato, c.garantia_reserva,
+               COALESCE(p.valor_pago, 0) AS taxa_paga
+        FROM agendamento a
+        INNER JOIN quadra q ON q.id = a.quadra_id
+        INNER JOIN cliente c ON c.id = a.cliente_id
+        LEFT JOIN (
+            SELECT agendamento_id,
+                   SUM(CASE WHEN status = 'Recebido'
+                            THEN valor_pago ELSE 0 END) AS valor_pago
+            FROM pagamento
+            WHERE agendamento_id IS NOT NULL
+            GROUP BY agendamento_id
+        ) p ON p.agendamento_id = a.id
+        WHERE a.data = %s
+          AND a.status IN ('Pendente', 'Confirmado', 'Não atendido')
+        ORDER BY q.nome, a.horario, a.id
+        """,
+        (data_reserva,)
+    )
+
+    linhas = [
+        f"📋 <b>Fila de Reservas — "
+        f"{data_reserva.strftime('%d/%m/%Y')}</b>",
+    ]
+    quadra_atual = None
+    horario_atual = None
+    registros_horario = []
+
+    def adicionar_horario(registros):
+        if not registros:
+            return
+        linhas.extend([
+            "",
+            f"<b>Horário {registros[0][2]}</b>",
+            "",
+        ])
+        posicao = 0
+        for indice, registro in enumerate(registros):
+            (
+                _quadra_id,
+                _nome_quadra,
+                _horario,
+                status,
+                taxa_reserva,
+                nome_cliente,
+                contato_cliente,
+                garantia_reserva,
+                taxa_paga,
+            ) = registro
+            if status == "Pendente":
+                posicao += 1
+                posicao_texto = f"{posicao} — "
+            else:
+                posicao_texto = ""
+
+            obrigatoria = garantia_reserva == "Obrigatório"
+            taxa_valor = float(taxa_reserva or 0)
+            if not obrigatoria:
+                taxa_texto = "Não"
+            elif taxa_valor <= 0:
+                taxa_texto = "⚠️ <b>valor não configurado</b>"
+            elif float(taxa_paga or 0) >= taxa_valor:
+                taxa_texto = f"💰 <b>R$ {taxa_valor:.2f}</b>".replace(".", ",")
+            else:
+                taxa_texto = (
+                    f"💰 <b>R$ {taxa_valor:.2f} (pendente)</b>"
+                    .replace(".", ",")
+                )
+
+            status_individual = {
+                "Pendente": "⏳ Pendente",
+                "Confirmado": "✅ Confirmado",
+                "Não atendido": "❌ Não Atendido",
+            }.get(status, html.escape(str(status)))
+            garantia_texto = "Obrigatória" if obrigatoria else "Não obrigatória"
+            telefone = normalizar_telefone_whatsapp(contato_cliente)
+            link_whatsapp = (
+                f'<a href="https://wa.me/{telefone}">📱 WhatsApp</a>'
+                if telefone
+                else "📱 WhatsApp indisponível"
+            )
+            linhas.extend([
+                f"• <b>{posicao_texto}"
+                f"{html.escape(normalizar_nome_cliente(nome_cliente))}</b>",
+                f"  Taxa de Reserva: {taxa_texto} "
+                f"({garantia_texto})",
+                f"  Status: {status_individual}",
+                f"  {link_whatsapp}",
+            ])
+            if indice < len(registros) - 1:
+                linhas.extend(["", "──────────────", ""])
+
+    reservas = cursor.fetchall()
+    for (
+        quadra_id,
+        nome_quadra,
+        horario,
+        status,
+        taxa_reserva,
+        nome_cliente,
+        contato_cliente,
+        garantia_reserva,
+        taxa_paga
+    ) in reservas:
+        horario_texto = str(horario)[:5]
+        chave = (quadra_id, horario_texto)
+        registro = (
+            quadra_id,
+            nome_quadra,
+            horario_texto,
+            status,
+            taxa_reserva,
+            nome_cliente,
+            contato_cliente,
+            garantia_reserva,
+            taxa_paga,
+        )
+        if chave != (quadra_atual, horario_atual):
+            adicionar_horario(registros_horario)
+            registros_horario = []
+            if quadra_id != quadra_atual:
+                linhas.extend([
+                    "",
+                    f"🏟️ <b>{html.escape(str(nome_quadra))}</b>",
+                ])
+            quadra_atual, horario_atual = chave
+        registros_horario.append(registro)
+    adicionar_horario(registros_horario)
+    if not reservas:
+        linhas.extend(["", "Nenhuma solicitação ou reserva nesta data."])
+
+    enviar_mensagem_telegram(
+        obter_chat_telegram("TELEGRAM_ADMIN_CHAT_ID"),
+        "\n".join(linhas)
+    )
+
+
+def enviar_extrato_diario_telegram(cursor, base_url):
+    hoje = date.today()
+    cursor.execute(
+        """
+        SELECT q.nome, a.horario, c.nome, 'Confirmado' AS status
+        FROM agendamento a
+        INNER JOIN quadra q ON q.id = a.quadra_id
+        INNER JOIN cliente c ON c.id = a.cliente_id
+        WHERE a.data = %s
+          AND a.status = 'Confirmado'
+        ORDER BY q.nome, a.horario, a.id
+        """,
+        (hoje,)
+    )
+    jogos = cursor.fetchall()
+    linhas = [
+        f"📋 <b>Extrato do Dia — {hoje.strftime('%d/%m/%Y')}</b>"
+    ]
+    if jogos:
+        quadra_atual = None
+        horario_atual = None
+        for nome_quadra, horario, nome_cliente, status in jogos:
+            horario_texto = str(horario)[:5]
+            if nome_quadra != quadra_atual:
+                linhas.extend([
+                    "",
+                    f"🏟️ <b>{html.escape(str(nome_quadra))}</b>",
+                ])
+                quadra_atual = nome_quadra
+                horario_atual = None
+            if horario_texto != horario_atual:
+                linhas.extend([
+                    "",
+                    f"🕒 <b>{horario_texto}</b>",
+                    "",
+                ])
+                horario_atual = horario_texto
+            linhas.extend([
+                f"• {html.escape(normalizar_nome_cliente(nome_cliente))}",
+                f"  ✅ {html.escape(str(status))}",
+                "",
+            ])
+    else:
+        linhas.extend(["", "Nenhum jogo confirmado para hoje."])
+
+    url_sistema = html.escape(base_url.rstrip("/"), quote=True)
+    linhas.extend([
+        "",
+        f'🔎 <i>Para consultar outros dias, acesse o '
+        f'<a href="{url_sistema}">sistema web do Bosque Esportes</a>.</i>',
+    ])
+
+    enviar_mensagem_telegram(
+        obter_chat_telegram("TELEGRAM_GROUP_CHAT_ID"),
+        "\n".join(linhas)
+    )
+
+
 def criar_link_whatsapp_reserva(
     whatsapp_responsavel,
     nome_cliente,
@@ -531,10 +846,21 @@ def criar_link_whatsapp_reserva(
         f"Quadra: {nome_quadra}\n"
         f"Data: {data_reserva.strftime('%d/%m/%Y')}\n"
         f"Horário: {horario_reserva.strftime('%H:%M')}\n"
-        f"Nome: {nome_cliente}\n"
+        f"Nome: {normalizar_nome_cliente(nome_cliente)}\n"
         f"WhatsApp: {contato_cliente}"
     )
     return f"https://wa.me/{telefone}?{urlencode({'text': mensagem})}"
+
+
+def normalizar_nome_cliente(nome):
+    return " ".join(str(nome or "").split()).upper()
+
+
+def normalizar_contato_cliente(contato):
+    digitos = re.sub(r"\D", "", str(contato or ""))
+    if digitos.startswith("55") and len(digitos) in (12, 13):
+        return digitos[2:]
+    return digitos
 
 
 # =========================================================
@@ -726,30 +1052,6 @@ def linha_para_dict(cursor, linha):
     return resultado
 
 
-def buscar_cliente_por_contato(
-    cursor,
-    contato
-):
-    """
-    Procura cliente pelo número de contato.
-    """
-
-    cursor.execute(
-        """
-        SELECT
-            id,
-            nome,
-            contato
-        FROM cliente
-        WHERE contato = %s
-        LIMIT 1
-        """,
-        (contato,)
-    )
-
-    return cursor.fetchone()
-
-
 def obter_ou_criar_cliente(
     cursor,
     nome,
@@ -760,49 +1062,70 @@ def obter_ou_criar_cliente(
     ou cria um novo.
     """
 
-    cliente = buscar_cliente_por_contato(
-        cursor,
-        contato
-    )
+    nome = normalizar_nome_cliente(nome)
+    contato = str(contato or "").strip()
+    contato_normalizado = normalizar_contato_cliente(contato)
 
-    if cliente:
+    if contato_normalizado:
+        padroes_contato = [contato_normalizado]
+        if len(contato_normalizado) in (10, 11):
+            padroes_contato.append(f"55{contato_normalizado}")
 
-        cliente_id = cliente[0]
-
-        cursor.execute(
-            """
-            UPDATE cliente
-            SET nome = %s
-            WHERE id = %s
-            """,
-            (
-                nome,
-                cliente_id
-            )
+        padroes_sql = [
+            "^[^0-9]*" + "[^0-9]*".join(padrao) + "[^0-9]*$"
+            for padrao in padroes_contato
+        ]
+        condicoes = " OR ".join(
+            "contato REGEXP %s" for _ in padroes_sql
         )
-
-        return cliente_id
+        cursor.execute(
+            f"""
+            SELECT id, nome, contato
+            FROM cliente
+            WHERE {condicoes}
+            ORDER BY id
+            """,
+            tuple(padroes_sql)
+        )
+        for cliente_id, nome_existente, contato_existente in cursor.fetchall():
+            if (
+                normalizar_contato_cliente(contato_existente)
+                == contato_normalizado
+                and normalizar_nome_cliente(nome_existente) == nome
+            ):
+                if nome_existente != nome:
+                    cursor.execute(
+                        "UPDATE cliente SET nome = %s WHERE id = %s",
+                        (nome, cliente_id)
+                    )
+                return cliente_id, False
 
     cursor.execute(
         """
         INSERT INTO cliente
             (
                 nome,
-                contato
+                contato,
+                garantia_reserva,
+                motivo_garantia
             )
         VALUES
             (
+                %s,
+                %s,
                 %s,
                 %s
             )
         """,
         (
             nome,
-            contato
+            contato,
+            "Dispensado",
+            None
         )
     )
 
-    return cursor.lastrowid
+    return cursor.lastrowid, True
 
 
 def obter_configuracao(
@@ -1362,7 +1685,11 @@ def listar_agendamentos(quadra_id: Optional[int] = None):
                 a.data,
                 a.horario,
                 a.valor_hora,
-                a.taxa_reserva,
+                CASE
+                    WHEN c.garantia_reserva = 'Obrigatório'
+                    THEN COALESCE(NULLIF(a.taxa_reserva, 0), q.taxa_reserva, 0)
+                    ELSE 0
+                END AS taxa_reserva,
                 a.valor_restante,
                 a.status,
                 COALESCE(p.valor_pago, 0) AS valor_pago,
@@ -1495,7 +1822,13 @@ def listar_jogos_do_dia(data: str, quadra_id: Optional[int] = None):
                    a.cliente_id, c.nome AS cliente,
                    c.contato, q.id AS quadra_id, q.nome AS quadra,
                    q.tipo AS tipo_quad, a.data, a.horario, a.status,
-                   a.valor_hora AS valor, a.taxa_reserva, a.valor_restante,
+                   a.valor_hora AS valor,
+                   CASE
+                       WHEN c.garantia_reserva = 'Obrigatório'
+                       THEN COALESCE(NULLIF(a.taxa_reserva, 0), q.taxa_reserva, 0)
+                       ELSE 0
+                   END AS taxa_reserva,
+                   a.valor_restante,
                    COALESCE(p.valor_pago, 0) AS valor_pago,
                    GREATEST(a.valor_hora - COALESCE(p.valor_pago, 0), 0)
                        AS saldo_pendente,
@@ -1869,9 +2202,10 @@ def criar_agendamento(
         # CRIA / LOCALIZA CLIENTE
         # -------------------------------------------------
 
-        cliente_id = obter_ou_criar_cliente(
+        nome_cliente = normalizar_nome_cliente(dados.nome)
+        cliente_id, _ = obter_ou_criar_cliente(
             cursor,
-            dados.nome.strip(),
+            nome_cliente,
             dados.contato.strip()
         )
 
@@ -1901,10 +2235,11 @@ def criar_agendamento(
         # CALCULA TAXA
         # -------------------------------------------------
 
-        taxa_reserva = float(quadra[5] or 0)
-
-        if garantia_reserva == "Obrigatório":
-            taxa_reserva = float(quadra[5] or 0)
+        taxa_reserva = (
+            float(quadra[5] or 0)
+            if garantia_reserva == "Obrigatório"
+            else 0.0
+        )
 
         valor_restante = (
             valor_hora - taxa_reserva
@@ -1968,15 +2303,25 @@ def criar_agendamento(
             (agendamento_id,)
         )
 
-        conexao.commit()
         whatsapp_url = criar_link_whatsapp_reserva(
             whatsapp_responsavel=quadra[6],
-            nome_cliente=dados.nome.strip(),
+            nome_cliente=nome_cliente,
             contato_cliente=dados.contato.strip(),
             nome_quadra=quadra[1],
             data_reserva=data_reserva,
             horario_reserva=horario_reserva
         )
+        conexao.commit()
+
+        telegram_notificado = True
+        try:
+            enviar_notificacao_telegram_reserva(cursor, data_reserva)
+        except Exception:
+            telegram_notificado = False
+            logger.exception(
+                "Telegram notification failed after booking %s was committed.",
+                agendamento_id
+            )
 
         return {
             "mensagem":
@@ -1984,6 +2329,9 @@ def criar_agendamento(
 
             "id":
                 agendamento_id,
+
+            "telegram_notificado":
+                telegram_notificado,
 
             "status":
                 "Pendente",
@@ -2027,7 +2375,8 @@ def criar_agendamento(
 @app.put("/agendamentos/{agendamento_id}/status")
 def atualizar_status_agendamento(
     agendamento_id: int,
-    dados: AtualizarStatus
+    dados: AtualizarStatus,
+    request: Request
 ):
 
     status_validos = [
@@ -2401,6 +2750,12 @@ def atualizar_status_agendamento(
                     )
                 )
 
+        if status_atual != dados.status:
+            enviar_extrato_diario_telegram(
+                cursor,
+                str(request.base_url)
+            )
+
         conexao.commit()
 
         return {
@@ -2695,7 +3050,7 @@ def criar_mensalidade(
         # CLIENTE
         # -------------------------------------------------
 
-        cliente_id = obter_ou_criar_cliente(
+        cliente_id, _ = obter_ou_criar_cliente(
             cursor,
             dados.nome.strip(),
             dados.contato.strip()
@@ -3340,7 +3695,7 @@ def listar_referencias_pagamento(quadra_id: Optional[int] = None):
 
 
 @app.post("/pagamentos")
-def criar_pagamento(dados: NovoPagamento):
+def criar_pagamento(dados: NovoPagamento, request: Request):
 
     if (dados.agendamento_id is None) == (dados.mensalidade_id is None):
         raise HTTPException(
@@ -3408,7 +3763,7 @@ def criar_pagamento(dados: NovoPagamento):
             cursor.execute(
                 """
                 SELECT cliente_id, valor_hora, taxa_reserva,
-                       valor_restante, status
+                       valor_restante, status, data
                 FROM agendamento
                 WHERE id = %s
                 FOR UPDATE
@@ -3572,6 +3927,16 @@ def criar_pagamento(dados: NovoPagamento):
             """,
             (pagamento_id, dados.status)
         )
+        if (
+            dados.agendamento_id
+            and dados.status == "Recebido"
+            and taxa_reserva > 0
+            and dados.valor_pago >= taxa_reserva
+        ):
+            enviar_extrato_diario_telegram(
+                cursor,
+                str(request.base_url)
+            )
         conexao.commit()
         return {
             "mensagem": "Pagamento registrado com sucesso.",
@@ -3593,7 +3958,11 @@ def criar_pagamento(dados: NovoPagamento):
 
 
 @app.put("/pagamentos/{pagamento_id}")
-def atualizar_pagamento(pagamento_id: int, dados: AtualizarPagamento):
+def atualizar_pagamento(
+    pagamento_id: int,
+    dados: AtualizarPagamento,
+    request: Request
+):
 
     status_validos = ["Pendente", "Recebido", "Cancelado"]
     formas_validas = ["PIX", "Dinheiro", "Cartão", "Outro"]
@@ -3727,6 +4096,34 @@ def atualizar_pagamento(pagamento_id: int, dados: AtualizarPagamento):
                 """,
                 (pagamento_id, status_anterior, dados.status)
             )
+        taxa_ja_recebida = (
+            status_anterior == "Recebido"
+            and float(pagamento[5] or 0) >= float(pagamento[2] or 0)
+        )
+        taxa_agora_recebida = (
+            pagamento[3] is not None
+            and dados.status == "Recebido"
+            and float(pagamento[2] or 0) > 0
+            and valor_pago >= float(pagamento[2] or 0)
+        )
+        pagamento_reserva_alterado = (
+            pagamento[3] is not None
+            and status_anterior != dados.status
+        )
+        if (
+            pagamento_reserva_alterado
+            or (taxa_agora_recebida and not taxa_ja_recebida)
+        ):
+            cursor.execute(
+                "SELECT data FROM agendamento WHERE id = %s",
+                (pagamento[3],)
+            )
+            reserva = cursor.fetchone()
+            if reserva:
+                enviar_extrato_diario_telegram(
+                    cursor,
+                    str(request.base_url)
+                )
         conexao.commit()
         return {"mensagem": "Pagamento atualizado com sucesso.", "status": dados.status}
     except HTTPException:
@@ -3869,7 +4266,7 @@ def criar_cliente(
     dados: NovoCliente
 ):
 
-    nome = dados.nome.strip()
+    nome = normalizar_nome_cliente(dados.nome)
     contato = dados.contato.strip()
 
     if not nome:
@@ -3891,84 +4288,25 @@ def criar_cliente(
 
     try:
 
-        # -------------------------------------------------
-        # PROCURA MESMO CLIENTE
-        # -------------------------------------------------
-
-        cursor.execute(
-            """
-            SELECT
-                id,
-                nome,
-                contato
-            FROM cliente
-            WHERE nome = %s
-              AND contato = %s
-            LIMIT 1
-            """,
-            (
-                nome,
-                contato
-            )
+        cliente_id, novo = obter_ou_criar_cliente(
+            cursor,
+            nome,
+            contato
         )
-
-        cliente = cursor.fetchone()
-
-        if cliente:
-
-            return {
-                "mensagem":
-                    "Cliente já cadastrado.",
-
-                "id":
-                    cliente[0],
-
-                "novo":
-                    False
-            }
-
-        # -------------------------------------------------
-        # CRIA CLIENTE
-        # -------------------------------------------------
-
-        cursor.execute(
-            """
-            INSERT INTO cliente
-                (
-                    nome,
-                    contato,
-                    garantia_reserva,
-                    motivo_garantia
-                )
-            VALUES
-                (
-                    %s,
-                    %s,
-                    %s,
-                    %s
-                )
-            """,
-            (
-                nome,
-                contato,
-                "Dispensado",
-                None
-            )
-        )
-
-        cliente_id = cursor.lastrowid
 
         conexao.commit()
 
         return {
             "mensagem":
-                "Cliente criado com sucesso.",
+                "Cliente criado com sucesso."
+                if novo
+                else "Cliente já cadastrado.",
 
             "id":
                 cliente_id,
 
             "novo":
-                True
+                novo
         }
 
     except Exception as erro:
@@ -4043,6 +4381,8 @@ def atualizar_cliente(
         dados_dict = dados.model_dump(
             exclude_unset=True
         )
+        if dados.nome is not None:
+            dados_dict["nome"] = normalizar_nome_cliente(dados.nome)
         if dados.contato is not None:
             dados_dict["contato"] = dados.contato.strip()
 
@@ -4557,6 +4897,11 @@ def obter_relatorios(
             }
             for linha in cursor.fetchall()
         ]
+        reservas_periodo = completar_serie_diaria_reservas(
+            data_inicio,
+            data_fim,
+            reservas_periodo
+        )
 
         cursor.execute(
             """
@@ -4942,6 +5287,42 @@ def obter_relatorios(
         conexao.close()
 
 
+def calcular_indice_cancelamento(solicitacoes, cancelamentos):
+    if not solicitacoes:
+        return 0
+    return round(float(cancelamentos) / float(solicitacoes) * 100, 2)
+
+
+def calcular_media_solicitacoes(solicitacoes, ocorrencias):
+    if not ocorrencias:
+        return 0
+    return round(float(solicitacoes) / float(ocorrencias), 2)
+
+
+def completar_serie_diaria_reservas(data_inicio, data_fim, registros):
+    registros_por_data = {
+        str(item["dia"]): item
+        for item in registros
+    }
+    serie = []
+    for offset in range((data_fim - data_inicio).days + 1):
+        dia = (data_inicio + timedelta(days=offset)).isoformat()
+        serie.append(
+            registros_por_data.get(
+                dia,
+                {
+                    "dia": dia,
+                    "total": 0,
+                    "confirmadas": 0,
+                    "pendentes": 0,
+                    "canceladas": 0,
+                    "nao_atendidas": 0
+                }
+            )
+        )
+    return serie
+
+
 def construir_dashboard_avancado(
     cursor,
     data_inicio,
@@ -4951,7 +5332,7 @@ def construir_dashboard_avancado(
     resumo,
     inativo_dias
 ):
-    filtros_quadras = ["q.ativo = 1"]
+    filtros_quadras = ["1 = 1"]
     parametros_quadras = []
     if quadra_id is not None:
         filtros_quadras.append("q.id = %s")
@@ -4970,6 +5351,7 @@ def construir_dashboard_avancado(
         SELECT WEEKDAY(a.data),
                COUNT(*),
                SUM(a.status = 'Confirmado'),
+               SUM(a.status = 'Pendente'),
                SUM(a.status = 'Cancelado'),
                SUM(a.status = 'Não atendido'),
                COALESCE(SUM(
@@ -4988,14 +5370,27 @@ def construir_dashboard_avancado(
         int(row[0]): row[1:]
         for row in cursor.fetchall()
     }
+    dias_por_semana = [0] * 7
+    for offset in range((data_fim - data_inicio).days + 1):
+        dias_por_semana[(data_inicio + timedelta(days=offset)).weekday()] += 1
     demanda_dia_semana = [
         {
             "dia": nomes_dias[index],
-            "solicitacoes": int(weekdays_rows.get(index, (0, 0, 0, 0, 0))[0] or 0),
-            "confirmadas": int(weekdays_rows.get(index, (0, 0, 0, 0, 0))[1] or 0),
-            "canceladas": int(weekdays_rows.get(index, (0, 0, 0, 0, 0))[2] or 0),
-            "nao_atendidas": int(weekdays_rows.get(index, (0, 0, 0, 0, 0))[3] or 0),
-            "faturado": float(weekdays_rows.get(index, (0, 0, 0, 0, 0))[4] or 0)
+            "solicitacoes": int(weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[0] or 0),
+            "confirmadas": int(weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[1] or 0),
+            "pendentes": int(weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[2] or 0),
+            "canceladas": int(weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[3] or 0),
+            "nao_atendidas": int(weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[4] or 0),
+            "faturado": float(weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[5] or 0),
+            "ocorrencias_periodo": dias_por_semana[index],
+            "media_solicitacoes": calcular_media_solicitacoes(
+                weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[0] or 0,
+                dias_por_semana[index]
+            ),
+            "percentual_cancelamentos": calcular_indice_cancelamento(
+                weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[0] or 0,
+                weekdays_rows.get(index, (0, 0, 0, 0, 0, 0))[3] or 0
+            )
         }
         for index in range(7)
     ]
@@ -5005,6 +5400,7 @@ def construir_dashboard_avancado(
         SELECT HOUR(a.horario),
                COUNT(*),
                SUM(a.status = 'Confirmado'),
+               SUM(a.status = 'Pendente'),
                SUM(a.status = 'Cancelado'),
                SUM(a.status = 'Não atendido')
         FROM agendamento a
@@ -5020,8 +5416,9 @@ def construir_dashboard_avancado(
         f"{int(row[0]):02d}:00": {
             "solicitacoes": int(row[1] or 0),
             "confirmadas": int(row[2] or 0),
-            "canceladas": int(row[3] or 0),
-            "nao_atendidas": int(row[4] or 0)
+            "pendentes": int(row[3] or 0),
+            "canceladas": int(row[4] or 0),
+            "nao_atendidas": int(row[5] or 0)
         }
         for row in cursor.fetchall()
     }
@@ -5031,6 +5428,7 @@ def construir_dashboard_avancado(
         SELECT q.id, q.nome, q.tipo,
                COUNT(a.id),
                SUM(a.status = 'Confirmado'),
+               SUM(a.status = 'Pendente'),
                SUM(a.status = 'Cancelado'),
                SUM(a.status = 'Não atendido'),
                COALESCE(SUM(
@@ -5054,9 +5452,14 @@ def construir_dashboard_avancado(
             "tipo": row[2],
             "solicitacoes": int(row[3] or 0),
             "confirmadas": int(row[4] or 0),
-            "canceladas": int(row[5] or 0),
-            "nao_atendidas": int(row[6] or 0),
-            "faturado": float(row[7] or 0)
+            "pendentes": int(row[5] or 0),
+            "canceladas": int(row[6] or 0),
+            "nao_atendidas": int(row[7] or 0),
+            "faturado": float(row[8] or 0),
+            "percentual_cancelamentos": calcular_indice_cancelamento(
+                row[3] or 0,
+                row[6] or 0
+            )
         }
         for row in cursor.fetchall()
     ]
@@ -5081,17 +5484,27 @@ def construir_dashboard_avancado(
 
     cursor.execute(
         f"""
-        SELECT q.id, q.nome, q.tipo
+        SELECT q.id, q.nome, q.tipo, q.ativo
         FROM quadra q
         WHERE {where_quadras}
         ORDER BY q.nome
         """,
         parametros_quadras
     )
+    court_rows = cursor.fetchall()
     courts = [
-        {"quadra_id": int(row[0]), "quadra": row[1], "tipo": row[2]}
-        for row in cursor.fetchall()
+        {
+            "quadra_id": int(row[0]),
+            "quadra": row[1],
+            "tipo": row[2]
+        }
+        for row in court_rows
     ]
+    active_court_ids = {
+        int(row[0])
+        for row in court_rows
+        if row[3]
+    }
 
     cursor.execute(
         """
@@ -5166,6 +5579,7 @@ def construir_dashboard_avancado(
             {
                 "solicitacoes": 0,
                 "confirmadas": 0,
+                "pendentes": 0,
                 "canceladas": 0,
                 "nao_atendidas": 0
             }
@@ -5173,7 +5587,9 @@ def construir_dashboard_avancado(
     horarios_ordenados = sorted(demanda_horario)
     heatmap = [
         {
-            **court,
+            "quadra_id": court["quadra_id"],
+            "quadra": court["quadra"],
+            "tipo": court["tipo"],
             "valores": [
                 heatmap_values.get((court["quadra_id"], hour), 0)
                 for hour in horarios_ordenados
@@ -5185,12 +5601,15 @@ def construir_dashboard_avancado(
         {"horario": hour, **values}
         for hour, values in demanda_horario.items()
     ]
+    horarios_com_solicitacoes = [
+        item for item in horarios_ranked if item["solicitacoes"] > 0
+    ]
     horarios_mais = sorted(
-        horarios_ranked,
+        horarios_com_solicitacoes,
         key=lambda item: (-item["solicitacoes"], item["horario"])
     )[:10]
     horarios_menos = sorted(
-        horarios_ranked,
+        horarios_com_solicitacoes,
         key=lambda item: (item["solicitacoes"], item["horario"])
     )[:10]
 
@@ -5207,14 +5626,20 @@ def construir_dashboard_avancado(
         [data_inicio, data_fim] + parametros_quadras
     )
     confirmed_per_court = {}
-    confirmed_by_day = {}
-    confirmed_by_month = {}
+    confirmed_by_court_day = {}
+    confirmed_by_court_month = {}
     for court_id, day, status in cursor.fetchall():
         court_id = int(court_id)
         confirmed_per_court[court_id] = confirmed_per_court.get(court_id, 0) + 1
-        confirmed_by_day[day] = confirmed_by_day.get(day, 0) + 1
         month_key = day.strftime("%Y-%m")
-        confirmed_by_month[month_key] = confirmed_by_month.get(month_key, 0) + 1
+        court_day_key = (court_id, day)
+        court_month_key = (court_id, month_key)
+        confirmed_by_court_day[court_day_key] = (
+            confirmed_by_court_day.get(court_day_key, 0) + 1
+        )
+        confirmed_by_court_month[court_month_key] = (
+            confirmed_by_court_month.get(court_month_key, 0) + 1
+        )
 
     cursor.execute(
         f"""
@@ -5229,8 +5654,8 @@ def construir_dashboard_avancado(
         [data_fim, data_inicio] + parametros_quadras
     )
     recurring_occupancy = {}
-    recurring_by_day = {}
-    recurring_by_month = {}
+    recurring_by_court_day = {}
+    recurring_by_court_month = {}
     for court_id, weekday, member_start, member_end, member_status in cursor.fetchall():
         start = max(data_inicio, member_start)
         end = min(data_fim, member_end or data_fim)
@@ -5240,19 +5665,32 @@ def construir_dashboard_avancado(
             day = start + timedelta(days=offset)
             if (day.weekday() + 1) % 7 != int(weekday):
                 continue
-            recurring_occupancy[int(court_id)] = recurring_occupancy.get(int(court_id), 0) + 1
-            recurring_by_day[day] = recurring_by_day.get(day, 0) + 1
+            court_id = int(court_id)
+            recurring_occupancy[court_id] = recurring_occupancy.get(court_id, 0) + 1
+            court_day_key = (court_id, day)
+            recurring_by_court_day[court_day_key] = (
+                recurring_by_court_day.get(court_day_key, 0) + 1
+            )
             key = day.strftime("%Y-%m")
-            recurring_by_month[key] = recurring_by_month.get(key, 0) + 1
+            court_month_key = (court_id, key)
+            recurring_by_court_month[court_month_key] = (
+                recurring_by_court_month.get(court_month_key, 0) + 1
+            )
 
     days_total_open_hours = sum(
         operating_slots(data_inicio + timedelta(days=offset))
         for offset in range(period_days)
     )
-    total_available = days_total_open_hours * len(courts)
-    total_occupied = sum(confirmed_per_court.values()) + sum(recurring_occupancy.values())
+    total_available = days_total_open_hours * len(active_court_ids)
+    total_occupied = sum(
+        confirmed_per_court.get(court_id, 0)
+        + recurring_occupancy.get(court_id, 0)
+        for court_id in active_court_ids
+    )
     utilization_by_court = []
     for court in courts:
+        if court["quadra_id"] not in active_court_ids:
+            continue
         court_id = court["quadra_id"]
         occupied = confirmed_per_court.get(court_id, 0) + recurring_occupancy.get(court_id, 0)
         available = days_total_open_hours
@@ -5265,8 +5703,12 @@ def construir_dashboard_avancado(
     utilization_by_day = []
     for offset in range(period_days):
         day = data_inicio + timedelta(days=offset)
-        available = operating_slots(day) * len(courts)
-        occupied = confirmed_by_day.get(day, 0) + recurring_by_day.get(day, 0)
+        available = operating_slots(day) * len(active_court_ids)
+        occupied = sum(
+            confirmed_by_court_day.get((court_id, day), 0)
+            + recurring_by_court_day.get((court_id, day), 0)
+            for court_id in active_court_ids
+        )
         utilization_by_day.append({
             "dia": day.isoformat(),
             "horas_ocupadas": occupied,
@@ -5293,8 +5735,12 @@ def construir_dashboard_avancado(
         month_open_hours = sum(
             operating_slots(period_start + timedelta(days=offset))
             for offset in range((period_end - period_start).days + 1)
-        ) * len(courts)
-        occupied = confirmed_by_month.get(month_key, 0) + recurring_by_month.get(month_key, 0)
+        ) * len(active_court_ids)
+        occupied = sum(
+            confirmed_by_court_month.get((court_id, month_key), 0)
+            + recurring_by_court_month.get((court_id, month_key), 0)
+            for court_id in active_court_ids
+        )
         utilization_by_month.append({
             "mes": month_key,
             "horas_ocupadas": occupied,
@@ -5824,21 +6270,56 @@ def construir_dashboard_avancado(
     demand_cancel_by_weekday = [
         {
             "dia": item["dia"],
-            "cancelamentos": item["canceladas"]
+            "solicitacoes": item["solicitacoes"],
+            "cancelamentos": item["canceladas"],
+            "percentual_cancelamentos": item["percentual_cancelamentos"]
         }
         for item in demanda_dia_semana
+        if item["solicitacoes"] > 0
     ]
+    demand_cancel_by_weekday.sort(
+        key=lambda item: (
+            -item["percentual_cancelamentos"],
+            -item["cancelamentos"],
+            item["dia"]
+        )
+    )
     cancel_by_hour = [
-        {"horario": hour, "cancelamentos": values["canceladas"]}
+        {
+            "horario": hour,
+            "solicitacoes": values["solicitacoes"],
+            "cancelamentos": values["canceladas"],
+            "percentual_cancelamentos": calcular_indice_cancelamento(
+                values["solicitacoes"],
+                values["canceladas"]
+            )
+        }
         for hour, values in demanda_horario.items()
+        if values["solicitacoes"] > 0
     ]
-    cancel_by_hour.sort(key=lambda item: (-item["cancelamentos"], item["horario"]))
+    cancel_by_hour.sort(
+        key=lambda item: (
+            -item["percentual_cancelamentos"],
+            -item["cancelamentos"],
+            item["horario"]
+        )
+    )
     cancel_by_court = [
         {
             "quadra": item["quadra"],
-            "cancelamentos": item["canceladas"]
+            "solicitacoes": item["solicitacoes"],
+            "cancelamentos": item["canceladas"],
+            "percentual_cancelamentos": item["percentual_cancelamentos"]
         }
-        for item in demanda_quadras
+        for item in sorted(
+            demanda_quadras,
+            key=lambda item: (
+                -item["percentual_cancelamentos"],
+                -item["canceladas"],
+                item["quadra"]
+            )
+        )
+        if item["solicitacoes"] > 0
     ]
     summary_extra["taxa_conversao_percentual"] = summary_extra["taxa_conversao_percentual"]
     summary_extra["mensalistas_abandono_historico"] = sum(membership_history.values())

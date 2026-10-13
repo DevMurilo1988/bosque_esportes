@@ -999,16 +999,16 @@ async function carregarRelatorios() {
         renderizarGraficoBarras(
             'grafico-reservas',
             data.reservas_por_periodo,
-            [['total', 'Solicitações', '#45b7d1']],
+            [
+                ['confirmadas', 'Confirmadas', '#38c172'],
+                ['pendentes', 'Pendentes', '#f0b429'],
+                ['canceladas', 'Canceladas', '#e55353'],
+                ['nao_atendidas', 'Não atendidas', '#858b94']
+            ],
             false,
             'dia',
-            'line',
-            [
-                ['confirmadas', 'Confirmadas'],
-                ['pendentes', 'Pendentes'],
-                ['canceladas', 'Canceladas'],
-                ['nao_atendidas', 'Não atendidas']
-            ]
+            'stacked-vertical',
+            [['total', 'Total de solicitações']]
         );
         renderizarGraficoBarras(
             'grafico-pagamentos',
@@ -1092,26 +1092,33 @@ function renderizarDashboardDetalhado(data) {
         'grafico-demanda-semana',
         data.demanda_dia_semana,
         [
-            ['solicitacoes', 'Solicitações', '#45b7d1']
+            ['media_solicitacoes', 'Média de solicitações', '#45b7d1']
         ],
         false,
         'dia',
-        'vertical'
-    );
-    renderizarGraficoBarras(
-        'grafico-demanda-horario',
-        data.demanda_horario,
+        'vertical',
         [
-            ['pendentes', 'Pendentes', '#f0b429'],
-            ['confirmadas', 'Confirmadas', '#38c172'],
-            ['canceladas', 'Canceladas', '#e55353'],
-            ['nao_atendidas', 'Não atendidas', '#858b94']
-        ],
-        false,
-        'horario',
-        'stacked-horizontal',
-        [['solicitacoes', 'Solicitações']]
+            ['solicitacoes', 'Solicitações no período'],
+            ['ocorrencias_periodo', 'Ocorrências do dia'],
+            ['percentual_cancelamentos', '% de cancelamentos']
+        ]
     );
+    const horariosComSolicitacoes = data.demanda_horario
+        .filter(item => Number(item.solicitacoes) > 0)
+        .sort((a, b) =>
+            Number(b.solicitacoes) - Number(a.solicitacoes) ||
+            a.horario.localeCompare(b.horario)
+        );
+    renderizarTablaReporte('grafico-demanda-horario', [
+        ['Horário', item => escaparHTML(item.horario)],
+        ['Solicitações', item => item.solicitacoes],
+        ['Confirmadas', item => item.confirmadas],
+        ['Pendentes', item => item.pendentes],
+        ['Canceladas', item => item.canceladas],
+        ['Não atendidas', item => item.nao_atendidas],
+        ['Índice de cancelamento', item =>
+            `${Number(item.percentual_cancelamentos).toLocaleString('pt-BR')}%`]
+    ], horariosComSolicitacoes, 'Nenhuma solicitação por horário no período.');
     renderizarTablaReporte('horarios-mais', [
         ['Horário', item => escaparHTML(item.horario)],
         ['Solicitações', item => item.solicitacoes]
@@ -1120,20 +1127,20 @@ function renderizarDashboardDetalhado(data) {
         ['Horário', item => escaparHTML(item.horario)],
         ['Solicitações', item => item.solicitacoes]
     ], data.horarios_menos_requisitados, 'Sem horários disponíveis no período.');
-    renderizarGraficoBarras(
-        'grafico-demanda-quadras',
-        data.demanda_quadras,
-        [
-            ['pendentes', 'Pendentes', '#f0b429'],
-            ['confirmadas', 'Confirmadas', '#38c172'],
-            ['canceladas', 'Canceladas', '#e55353'],
-            ['nao_atendidas', 'Não atendidas', '#858b94']
-        ],
-        false,
-        'quadra',
-        'stacked-horizontal',
-        [['solicitacoes', 'Solicitações']]
+    const demandaQuadrasOrdenada = [...data.demanda_quadras].sort((a, b) =>
+        Number(b.solicitacoes) - Number(a.solicitacoes) ||
+        a.quadra.localeCompare(b.quadra)
     );
+    renderizarTablaReporte('grafico-demanda-quadras', [
+        ['Quadra', item => escaparHTML(item.quadra)],
+        ['Solicitações', item => item.solicitacoes],
+        ['Confirmadas', item => item.confirmadas],
+        ['Pendentes', item => item.pendentes],
+        ['Canceladas', item => item.canceladas],
+        ['Não atendidas', item => item.nao_atendidas],
+        ['Índice de cancelamento', item =>
+            `${Number(item.percentual_cancelamentos).toLocaleString('pt-BR')}%`]
+    ], demandaQuadrasOrdenada);
     renderizarGraficoBarras(
         'grafico-utilizacao',
         data.utilizacao_periodo.por_quadra,
@@ -1151,21 +1158,27 @@ function renderizarDashboardDetalhado(data) {
         'dia',
         'line'
     );
-    renderizarGraficoBarras(
-        'grafico-cancel-semana',
-        data.cancelamentos.por_dia_semana,
-        [['cancelamentos', 'Cancelamentos', '#e55353']],
-        false,
-        'dia',
-        'vertical'
-    );
+    renderizarTablaReporte('relatorio-cancel-semana', [
+        ['Dia da semana', item => escaparHTML(item.dia)],
+        ['Solicitações', item => item.solicitacoes],
+        ['Cancelamentos', item => item.cancelamentos],
+        ['Índice de cancelamento', item => item.solicitacoes
+            ? `${Number(item.percentual_cancelamentos).toLocaleString('pt-BR')}%`
+            : '—']
+    ], data.cancelamentos.por_dia_semana);
     renderizarTablaReporte('relatorio-cancel-horario', [
         ['Horário', item => escaparHTML(item.horario)],
-        ['Cancelamentos', item => item.cancelamentos]
+        ['Solicitações', item => item.solicitacoes],
+        ['Cancelamentos', item => item.cancelamentos],
+        ['Índice de cancelamento', item =>
+            `${Number(item.percentual_cancelamentos).toLocaleString('pt-BR')}%`]
     ], data.cancelamentos.por_horario);
     renderizarTablaReporte('relatorio-cancel-quadra', [
         ['Quadra', item => escaparHTML(item.quadra)],
-        ['Cancelamentos', item => item.cancelamentos]
+        ['Solicitações', item => item.solicitacoes],
+        ['Cancelamentos', item => item.cancelamentos],
+        ['Índice de cancelamento', item =>
+            `${Number(item.percentual_cancelamentos).toLocaleString('pt-BR')}%`]
     ], data.cancelamentos.por_quadra);
     renderizarTablaReporte('relatorio-cancel-cliente', [
         ['Cliente', item => escaparHTML(item.cliente)],
@@ -1632,6 +1645,16 @@ function configurarAgendamentos() {
 
     }
 
+    const listaAgendamentos = document.getElementById('lista-agendamentos');
+    listaAgendamentos?.addEventListener('click', event => {
+        const botao = event.target instanceof Element
+            ? event.target.closest('[data-receber-agendamento]')
+            : null;
+        if (botao) {
+            abrirPagamentoJogo({currentTarget: botao});
+        }
+    });
+
     function configurarJogosDia() {
         const data = document.getElementById('jogos-dia-data');
         const quadra = document.getElementById('jogos-dia-quadra');
@@ -1795,10 +1818,12 @@ function configurarAgendamentos() {
         form.dataset.agendamento = botao.dataset.agendamento || '';
         form.dataset.mensalidade = botao.dataset.mensalidade || '';
         form.dataset.valorTotal = botao.dataset.valor;
+        const total = Number(botao.dataset.valor || 0);
+        const pago = Number(botao.dataset.pago || 0);
         document.getElementById('jogo-pagamento-resumo').textContent =
-            `${botao.dataset.cliente} · ${botao.dataset.quadra} · ${formatarData(botao.dataset.data)} ${formatarHorario(botao.dataset.horario)}`;
-        document.getElementById('jogo-pagamento-total').value = botao.dataset.pago;
-        document.getElementById('jogo-pagamento-total').max = botao.dataset.valor;
+            `${botao.dataset.cliente} · ${botao.dataset.quadra} · ${formatarData(botao.dataset.data)} ${formatarHorario(botao.dataset.horario)} · Total ${formatarMoeda(total)} · Recebido ${formatarMoeda(pago)} · Devido ${formatarMoeda(Math.max(total - pago, 0))}`;
+        document.getElementById('jogo-pagamento-total').value = pago;
+        document.getElementById('jogo-pagamento-total').max = total;
         document.getElementById('jogo-pagamento-data').value = dataLocalISO(new Date());
         document.getElementById('jogo-pagamento-dialog').showModal();
     }
@@ -1854,6 +1879,7 @@ function configurarAgendamentos() {
             document.getElementById('jogo-pagamento-dialog').close();
             await carregarJogosDia();
             await carregarPagamentos();
+            await carregarAgendamentos();
         } catch (erro) {
             alert(erro.message);
         }
@@ -2393,12 +2419,41 @@ function renderizarAgendamentos() {
 
 
             <td>
-                ${formatarMoeda(agendamento.taxa_reserva)}
+                ${formatarMoeda(agendamento.taxa_reserva || 0)}
+            </td>
+
+
+            <td>
+                ${formatarMoeda(agendamento.valor_pago || 0)}
+            </td>
+
+
+            <td>
+                ${formatarMoeda(agendamento.saldo_pendente || 0)}
             </td>
 
 
             <td>
                 ${controleStatus}
+            </td>
+
+
+            <td>
+                ${
+                    ['Pendente', 'Confirmado'].includes(agendamento.status)
+                        ? `<button type="button" data-receber-agendamento
+                               data-agendamento="${Number(agendamento.id)}"
+                               data-valor="${Number(agendamento.valor_hora || 0)}"
+                               data-pago="${Number(agendamento.valor_pago || 0)}"
+                               data-pagamento="${Number(agendamento.pagamento_id || 0)}"
+                               data-cliente="${escaparAtributo(agendamento.cliente)}"
+                               data-quadra="${escaparAtributo(agendamento.quadra)}"
+                               data-data="${escaparAtributo(agendamento.data)}"
+                               data-horario="${escaparAtributo(agendamento.horario)}">
+                               Recebimento
+                           </button>`
+                        : '—'
+                }
             </td>
 
         `;

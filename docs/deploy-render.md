@@ -11,6 +11,14 @@ gerenciado, que não é compatível com esta aplicação sem uma migração do b
 do código. Não crie um Render Postgres para este deploy.
 
 Use um serviço MySQL gerenciado externo que aceite conexões TLS da aplicação.
+Para o Aiven, copie host, porta, nome do banco, usuário e senha da tela de
+informações de conexão do serviço MySQL; não use `localhost`. A aplicação usa
+`mysql-connector-python` e lê esses dados de `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER` e `DB_PASSWORD`. `DB_SSL_DISABLED=false` mantém TLS habilitado;
+`DB_SSL_VERIFY_CERT=true` valida o certificado do servidor e a identidade do
+host. Configure `DB_SSL_CA` com o caminho do certificado CA baixado no Aiven
+(por exemplo, o caminho do Secret File criado no Render). Não desabilite a
+validação TLS em produção.
 Não exponha o MySQL do seu computador nem use o usuário `root` do banco na
 aplicação. Crie um banco e um usuário próprios, com apenas as permissões
 necessárias para o schema do Bosque Esportes. As tabelas devem ser criadas uma
@@ -36,10 +44,9 @@ precisa apenas de `SELECT`, `INSERT`, `UPDATE` e `DELETE` nas tabelas do sistema
 7. No Render, crie um Blueprint a partir do repositório. O `render.yaml` pede as
    variáveis marcadas `sync: false`; preencha `DB_HOST`, `DB_NAME`, `DB_USER` e
    `DB_PASSWORD` com as credenciais do MySQL externo.
-8. Confirme no painel do Render que `COOKIE_SECURE=true` e que a conexão TLS
-   exigida pelo provedor está habilitada. Se o provedor entregar um certificado
-   CA, configure-o como Secret File e indique seu caminho em `DB_SSL_CA`;
-   habilite `DB_SSL_VERIFY_CERT=true`.
+8. Confirme no painel do Render que `COOKIE_SECURE=true`,
+   `DB_SSL_DISABLED=false` e `DB_SSL_VERIFY_CERT=true`. Para o Aiven, configure
+   o certificado CA como Secret File e informe o caminho absoluto em `DB_SSL_CA`.
 9. Aguarde o deploy ficar healthy e abra a URL `onrender.com`. `/api/ready`
    deve retornar `{"sistema":"Bosque Esportes","status":"ready"}`. Faça login,
    envie uma solicitação de teste e confira os dados diretamente no banco.
@@ -47,6 +54,12 @@ precisa apenas de `SELECT`, `INSERT`, `UPDATE` e `DELETE` nas tabelas do sistema
     suspender o serviço após 15 minutos sem acessos, causando demora na primeira
     abertura. Não use dados pessoais reais até revisar backups, privacidade e
     plano do banco externo.
+
+O comando de inicialização do `render.yaml` já escuta em `0.0.0.0` e utiliza
+`$PORT`, atribuído pelo Render. O `requirements.txt` contém FastAPI, Uvicorn,
+Pydantic (instalado como dependência do FastAPI), `mysql-connector-python` e
+`python-dotenv`; SQLAlchemy, PyMySQL e `requests` não são necessários porque o
+código usa o conector MySQL e `urllib` diretamente.
 
 ## Solicitações pelo WhatsApp
 
@@ -62,6 +75,36 @@ brasileiros com 10 ou 11 dígitos recebem o código `55` automaticamente. O
 telefone será usado como destinatário do link; sem um número válido, o pedido
 continua registrado e o site avisa que o WhatsApp do responsável não está
 configurado. Nenhum token ou configuração da API da Meta é necessário.
+
+## Notificações administrativas pelo Telegram
+
+O Telegram usa um bot compartilhado, mas envia dois fluxos para chats distintos:
+as novas solicitações e filas vão somente para o chat privado da administração;
+o grupo geral recebe apenas o extrato atualizado quando há uma mudança de
+status de reserva/pagamento ou o recebimento da taxa de garantia. O extrato
+lista apenas reservas confirmadas e mensalidades ativas da data, nunca
+solicitações pendentes. Em datas futuras, a mensagem inclui um link para o
+sistema web.
+
+1. Crie um bot com o `@BotFather` e guarde o token em um gerenciador seguro.
+2. Inicie uma conversa privada com o bot e envie `/start`. Obtenha esse chat ID
+   para `TELEGRAM_ADMIN_CHAT_ID`.
+3. Adicione o bot ao grupo geral, permita que ele envie mensagens e obtenha o
+   chat ID do grupo para `TELEGRAM_GROUP_CHAT_ID` (normalmente um número
+   negativo). Não use o chat privado da administração como grupo.
+4. Configure `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID` e
+   `TELEGRAM_GROUP_CHAT_ID` no `.env` local e como variáveis secretas do Render.
+   A configuração antiga `TELEGRAM_CHAT_ID` continua aceita como fallback para
+   o chat privado, mas prefira a variável nova.
+5. Reinicie/reimplante o serviço e teste uma solicitação e uma mudança de
+   status. Uma solicitação é salva mesmo se o Telegram estiver indisponível;
+   nesse caso, o backend registra a falha nos logs e a tela informa que a
+   notificação precisa ser verificada. Se o Telegram não aceitar um extrato do
+   grupo, a alteração correspondente é revertida para manter o painel
+   sincronizado.
+
+Não publique o token, não o inclua em repositórios e evite compartilhar URLs
+que contenham o token do bot.
 
 ## Limites e segurança
 

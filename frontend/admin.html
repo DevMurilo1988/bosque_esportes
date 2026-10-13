@@ -409,13 +409,19 @@
                                 Horário
                             </th>
 
-                            <th>Valor</th>
+                            <th>Valor total</th>
 
                             <th>Taxa</th>
+
+                            <th>Recebido</th>
+
+                            <th>Devido</th>
 
                             <th>
                                 Status
                             </th>
+
+                            <th>Ação</th>
 
                         </tr>
 
@@ -554,8 +560,9 @@
                     <button type="button" id="fechar-jogo-pagamento">Fechar</button>
                 </div>
                 <p id="jogo-pagamento-resumo"></p>
-                <label for="jogo-pagamento-total">Total recebido até agora</label>
+                <label for="jogo-pagamento-total">Total já recebido do cliente</label>
                 <input id="jogo-pagamento-total" type="number" min="0" step="0.01" required>
+                <small>Informe o acumulado recebido. O valor devido é calculado pelo total do agendamento menos esse valor.</small>
                 <label for="jogo-pagamento-forma">Forma de pagamento</label>
                 <select id="jogo-pagamento-forma" required>
                     <option value="">Selecione</option>
@@ -632,7 +639,8 @@
                         <div id="relatorio-funil"></div>
                     </article>
                     <article class="report-card report-card-chart report-card-wide">
-                        <h3>Reservas ao longo do período</h3>
+                        <h3>Solicitações por data reservada</h3>
+                        <p class="report-description">Cada coluna mostra os agendamentos daquele dia, separados pelo status atual. O total do período aparece nos indicadores acima.</p>
                         <div id="grafico-reservas"></div>
                     </article>
                     <article class="report-card">
@@ -649,22 +657,23 @@
             <section class="report-pane" data-report-pane="demand" hidden>
                 <div class="report-grid">
                     <article class="report-card report-card-chart">
-                        <h3>Demanda por dia da semana</h3>
+                        <h3>Média de solicitações por dia da semana</h3>
+                        <p class="report-description">Média por ocorrência daquele dia no período, para comparar semanas parciais corretamente.</p>
                         <div id="grafico-demanda-semana"></div>
                     </article>
                     <article class="report-card report-card-chart report-card-wide">
-                        <h3>Demanda por horário · status das solicitações</h3>
+                        <h3>Solicitações e status por horário</h3>
                         <div id="grafico-demanda-horario"></div>
                     </article>
                     <article class="report-card report-card-wide">
-                        <h3>Ranking de horários</h3>
+                        <h3>Ranking de horários com solicitações</h3>
                         <div class="report-ranking-columns">
-                            <div><h4>Mais requisitados</h4><div id="horarios-mais"></div></div>
-                            <div><h4>Menos requisitados</h4><div id="horarios-menos"></div></div>
+                            <div><h4>Mais solicitados</h4><div id="horarios-mais"></div></div>
+                            <div><h4>Menor demanda</h4><div id="horarios-menos"></div></div>
                         </div>
                     </article>
                     <article class="report-card report-card-chart">
-                        <h3>Solicitações por quadra e status</h3>
+                        <h3>Demanda por quadra e status</h3>
                         <div id="grafico-demanda-quadras"></div>
                     </article>
                     <article class="report-card report-card-chart">
@@ -676,19 +685,21 @@
                         <div id="relatorio-mapa-calor"></div>
                     </article>
                     <article class="report-card report-card-chart report-card-wide">
-                        <h3>Cancelamentos ao longo do tempo</h3>
+                        <h3>Agendamentos cancelados por data reservada</h3>
                         <div id="grafico-cancelamentos"></div>
                     </article>
                     <article class="report-card report-card-chart">
-                        <h3>Cancelamentos por dia da semana</h3>
-                        <div id="grafico-cancel-semana"></div>
+                        <h3>Índice de cancelamentos por dia da semana</h3>
+                        <p class="report-description">Percentual de solicitações daquele dia que estão canceladas; compara a proporção, não apenas o volume.</p>
+                        <div id="relatorio-cancel-semana"></div>
                     </article>
                     <article class="report-card">
-                        <h3>Cancelamentos por horário</h3>
+                        <h3>Índice de cancelamentos por horário</h3>
+                        <p class="report-description">Horários com solicitações, ordenados do maior para o menor percentual cancelado.</p>
                         <div id="relatorio-cancel-horario"></div>
                     </article>
                     <article class="report-card">
-                        <h3>Cancelamentos por quadra</h3>
+                        <h3>Índice de cancelamentos por quadra</h3>
                         <div id="relatorio-cancel-quadra"></div>
                     </article>
                     <article class="report-card">

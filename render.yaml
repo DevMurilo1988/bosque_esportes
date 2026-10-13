@@ -25,6 +25,14 @@ services:
       - key: DB_SSL_DISABLED
         value: "false"
       - key: DB_SSL_VERIFY_CERT
-        value: "false"
+        value: "true"
+      - key: DB_SSL_CA
+        value: ""
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_CHAT_ID
+        sync: false
+      - key: TELEGRAM_GROUP_CHAT_ID
+        sync: false
       - key: COOKIE_SECURE
         value: "true"

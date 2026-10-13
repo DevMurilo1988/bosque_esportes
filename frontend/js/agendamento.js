@@ -729,6 +729,12 @@ document.addEventListener('DOMContentLoaded', () => {
         })
 
         .then(resultado => {
+            const avisoTelegram =
+                resultado.telegram_notificado === false
+                    ? '\n\nAtenção: a solicitação foi salva, mas a notificação ' +
+                      'administrativa pelo Telegram falhou. Avise a administração.'
+                    : '';
+
             if (resultado.whatsapp_url) {
                 if (janelaWhatsapp) {
                     janelaWhatsapp.location.href =
@@ -739,7 +745,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(
                     'Solicitação registrada como Pendente.\n\n' +
                     'O WhatsApp abrirá com a mensagem preenchida. ' +
-                    'Toque em Enviar para avisar o responsável.'
+                    'Toque em Enviar para avisar o responsável.' +
+                    avisoTelegram
                 );
             } else {
                 if (janelaWhatsapp) {
@@ -747,7 +754,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 alert(
                     'Solicitação registrada como Pendente, mas esta quadra ' +
-                    'ainda não tem um WhatsApp de responsável configurado.'
+                    'ainda não tem um WhatsApp de responsável configurado.' +
+                    avisoTelegram
                 );
             }
 

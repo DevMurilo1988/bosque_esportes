@@ -20,6 +20,7 @@ PERMISSÕES POR QUADRA E CONTEÚDO DO SITE
     - admin_quadra_permissao é uma relação muitos-para-muitos entre administradores e quadras. Mantém o escopo de acesso fora da tabela de usuários e permite conceder várias quadras a cada operador sem duplicar usuários ou dados de quadra.
     - `/admin/escopo-quadras` retorna apenas quadras autorizadas para o seletor do painel; `/admin/quadras` é a consulta detalhada usada para administrar seus dados.
     - `/jogos?data=AAAA-MM-DD&quadra_id=ID` combina reservas avulsas e ocorrências de mensalistas para a gestão do dia. O painel permite conferir saldos, abrir o atendimento pelo WhatsApp e registrar recebimentos externos.
+    - Solicitações públicas enviam ao chat privado da administração a fila consolidada por data usando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_ADMIN_CHAT_ID`; o grupo geral usa `TELEGRAM_GROUP_CHAT_ID` e recebe extratos somente após mudanças de status ou recebimento da taxa, listando reservas confirmadas e mensalidades ativas. A tela do cliente mantém o fluxo existente do WhatsApp. Cadastros padronizam nomes em maiúsculas e reutilizam o registro quando nome e telefone normalizados coincidem.
     - `backend/seed_demo_data.py --month AAAA-MM --replace-operational-data` substitui reservas, mensalidades, pagamentos e históricos por uma massa de demonstração. Preserva quadras, configurações, administradores e clientes não identificados pelo prefixo `DEMO`; a opção explícita de substituição é obrigatória.
 
 PAGAMENTOS E MIGRAÇÕES
