@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let agendamentos = [];
     let atualizandoAgendamentos = false;
     let tipoReservaSelecionado = 'avulso';
+    let layoutMobile = null;
 
     ajustarLayoutResponsivo();
     window.addEventListener('resize', ajustarLayoutResponsivo);
@@ -140,8 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function ajustarLayoutResponsivo() {
+        const mobile = window.matchMedia('(max-width: 768px)').matches;
+        if (mobile === layoutMobile) return;
+        layoutMobile = mobile;
 
-        if (window.matchMedia('(max-width: 768px)').matches) {
+        if (mobile) {
             visualQuadra.appendChild(selecaoReserva);
             visualQuadra.appendChild(grupoHorarios);
             visualQuadra.appendChild(opcoesPreco);
