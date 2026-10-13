@@ -30,7 +30,11 @@ precisa apenas de `SELECT`, `INSERT`, `UPDATE` e `DELETE` nas tabelas do sistema
 1. Faça backup do MySQL local antes de exportar qualquer tabela.
 2. Crie o banco MySQL externo e seu usuário restrito. Anote host, porta, nome do
    banco, usuário e senha em um gerenciador seguro; não os coloque no GitHub.
-3. Crie o schema do serviço externo usando `backend/schema.mysql.sql`.
+3. Crie o schema do serviço externo usando `backend/schema.mysql.sql`. Para um
+   banco já existente, aplique também
+   `backend/migrations/20261013_pagamento_recebimentos_incrementais.sql`
+   depois das migrações financeiras já utilizadas; faça backup antes de
+   executar alterações no banco.
 4. Transfira para o banco externo os dados que devem permanecer disponíveis,
    como as quadras, configurações, clientes mantidos e usuário administrativo.
    Use uma exportação de dados do MySQL Workbench ou ferramenta equivalente.

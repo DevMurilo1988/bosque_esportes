@@ -14,6 +14,9 @@ let quadras = [];
 let configuracoes = [];
 let permissoesAdmin = {};
 let usuarioAdminAtual = null;
+let pagamentosRegistros = [];
+let pagamentosRecebimentos = [];
+let periodoPagamento = 'all';
 const fetchOriginal = window.fetch.bind(window);
 
 window.fetch = (input, options) => {
@@ -594,6 +597,15 @@ function configurarPagamentos() {
         .addEventListener('click', () =>
             document.getElementById('pagamento-historico-dialog').close()
         );
+    document.querySelectorAll('[data-payment-period]').forEach(button => {
+        button.addEventListener('click', () => {
+            periodoPagamento = button.dataset.paymentPeriod;
+            document.querySelectorAll('[data-payment-period]').forEach(item =>
+                item.classList.toggle('active', item === button)
+            );
+            renderizarPagamentos();
+        });
+    });
     atualizar.addEventListener('click', () => {
         carregarReferenciasPagamento();
         carregarPagamentos();
@@ -708,67 +720,153 @@ async function carregarReferenciasPagamento() {
 async function carregarPagamentos() {
 
     try {
-        const response = await fetch('/pagamentos');
-        const resultado = await response.json();
-        if (!response.ok) {
+
+        const [respostaPagamentos, respostaRecebimentos] = await Promise.all([
+            fetch('/pagamentos'),
+            fetch('/pagamentos/recebimentos')
+        ]);
+        const [resultado, recebimentos] = await Promise.all([
+            respostaPagamentos.json(),
+            respostaRecebimentos.json()
+        ]);
+        if (!respostaPagamentos.ok) {
             throw new Error(resultado.detail || 'Erro ao carregar pagamentos.');
         }
-        renderizarPagamentos(resultado);
+        if (!respostaRecebimentos.ok) {
+            throw new Error(recebimentos.detail || 'Erro ao carregar recebimentos.');
+        }
+        pagamentosRegistros = resultado;
+        pagamentosRecebimentos = recebimentos;
+        renderizarPagamentos();
     } catch (erro) {
         console.error(erro);
-        mostrarErroTabela('lista-pagamentos', 'Erro ao carregar pagamentos.');
+        document.getElementById('lista-pagamentos').innerHTML =
+            `<p class="payment-load-error">${escaparHTML(erro.message || 'Erro ao carregar pagamentos.')}</p>`;
     }
 
 }
 
-function renderizarPagamentos(pagamentos) {
+function renderizarPagamentos() {
 
-    const tbody = document.getElementById('lista-pagamentos');
+    const container = document.getElementById('lista-pagamentos');
     const empty = document.getElementById('mensagem-pagamentos');
-    tbody.innerHTML = '';
-    empty.style.display = pagamentos.length ? 'none' : 'block';
+    const hoje = dataLocalISO(new Date());
+    const recebimentos = pagamentosRecebimentos.filter(item => {
+        const dia = String(item.data_hora_recebimento || '').slice(0, 10);
+        if (periodoPagamento === 'day') return dia === hoje;
+        if (periodoPagamento === 'month') return dia.slice(0, 7) === hoje.slice(0, 7);
+        if (periodoPagamento === 'year') return dia.slice(0, 4) === hoje.slice(0, 4);
+        return true;
+    });
+    const total = recebimentos.reduce(
+        (soma, item) => soma + Number(item.valor_recebido || 0),
+        0
+    );
+    document.getElementById('pagamento-resumo-periodo').innerHTML = `
+        <article><span>Recebido no período</span><strong>${formatarMoeda(total)}</strong></article>
+        <article><span>Lançamentos</span><strong>${recebimentos.length}</strong></article>
+    `;
+    container.querySelectorAll('.payment-record-card').forEach(card => card.remove());
+    empty.style.display = pagamentosRegistros.length ? 'none' : 'block';
 
-    pagamentos.forEach(item => {
-        const linha = document.createElement('tr');
+    pagamentosRegistros.forEach(item => {
         const legado = String(item.id).startsWith('mensalidade-legada-');
         const id = escaparAtributo(item.id);
-        linha.innerHTML = `
-            <td>${formatarData(item.data_pagamento || item.criado_em)}</td>
-            <td>${escaparHTML(item.cliente || '')}</td>
-            <td>${escaparHTML(item.tipo)} · ${escaparHTML(item.quadra || '-')}</td>
-            <td>${escaparHTML(item.competencia || '-')}</td>
-            <td>${formatarMoeda(item.valor)}</td>
-            <td>${formatarMoeda(item.taxa_reserva)}</td>
-            <td>${formatarMoeda(item.valor_total)}</td>
-            <td>${formatarMoeda(item.valor_pago)}</td>
-            <td>${escaparHTML(item.forma_pagamento || '-')}</td>
-            <td>${escaparHTML(item.status)}</td>
-            <td>
-                ${
-                    legado
-                        ? 'Histórico antigo'
-                        : `<select class="payment-status" data-id="${id}">
-                            ${['Pendente', 'Recebido', 'Cancelado'].map(status =>
-                                `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
-                            ).join('')}
-                           </select>
-                           <button type="button" class="payment-history"
-                               data-id="${id}">Histórico</button>`
-                }
-            </td>
+        const lancamentos = recebimentos.filter(
+            recebimento => Number(recebimento.pagamento_id) === Number(item.id)
+        );
+        const saldo = Math.max(
+            Number(item.valor_total || 0) - Number(item.valor_pago || 0),
+            0
+        );
+        const card = document.createElement('article');
+        card.className = 'payment-record-card';
+        card.innerHTML = `
+            <header>
+                <div>
+                    <strong>${escaparHTML(item.cliente || '')}</strong>
+                    <span>${escaparHTML(item.tipo)} · ${escaparHTML(item.quadra || '-')}
+                    ${item.competencia ? ` · ${escaparHTML(item.competencia)}` : ''}</span>
+                </div>
+                <span class="payment-status-badge">${escaparHTML(item.status)}</span>
+            </header>
+            <div class="payment-record-values">
+                <span>Total<strong>${formatarMoeda(item.valor_total)}</strong></span>
+                <span>Recebido<strong>${formatarMoeda(item.valor_pago)}</strong></span>
+                <span>Saldo<strong>${formatarMoeda(saldo)}</strong></span>
+            </div>
+            <div class="payment-transactions">
+                <h4>Recebimentos no período</h4>
+                ${lancamentos.length
+                    ? lancamentos.map(recebimento => `
+                        <div class="payment-transaction">
+                            <strong>${formatarMoeda(recebimento.valor_recebido)}</strong>
+                            <span>${formatarData(String(recebimento.data_hora_recebimento).slice(0, 10))}
+                                ${String(recebimento.data_hora_recebimento).slice(11, 16)}
+                                · ${escaparHTML(recebimento.metodo_pagamento)}</span>
+                            <small>Registrado por ${escaparHTML(recebimento.nome_usuario)}</small>
+                            ${recebimento.observacoes
+                                ? `<small>${escaparHTML(recebimento.observacoes)}</small>`
+                                : ''}
+                        </div>
+                    `).join('')
+                    : '<p>Nenhum recebimento neste período.</p>'}
+            </div>
+            <footer>
+                ${!legado && saldo > 0 && item.status !== 'Cancelado'
+                    ? `<button type="button" class="payment-receive" data-id="${id}"
+                        data-total="${Number(item.valor_total)}" data-pago="${Number(item.valor_pago)}"
+                        data-cliente="${escaparAtributo(item.cliente || '')}"
+                        data-quadra="${escaparAtributo(item.quadra || '')}">Registrar recebimento</button>`
+                    : ''}
+                ${!legado
+                    ? `<select class="payment-status" data-id="${id}">
+                        ${(item.status === 'Recebido'
+                            ? ['Recebido', 'Cancelado']
+                            : ['Pendente', 'Cancelado']).map(status =>
+                            `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
+                        ).join('')}
+                       </select>
+                       <button type="button" class="payment-history" data-id="${id}">Histórico</button>`
+                    : ''}
+            </footer>
         `;
-        tbody.appendChild(linha);
+        container.appendChild(card);
     });
 
-    tbody.querySelectorAll('.payment-status').forEach(select => {
+    container.querySelectorAll('.payment-status').forEach(select => {
         select.addEventListener('change', atualizarStatusPagamento);
     });
-    tbody.querySelectorAll('.payment-history').forEach(button => {
+    container.querySelectorAll('.payment-history').forEach(button => {
         button.addEventListener('click', () =>
             carregarHistoricoPagamento(button.dataset.id)
         );
     });
+    container.querySelectorAll('.payment-receive').forEach(button => {
+        button.addEventListener('click', abrirRecebimentoPagamento);
+    });
 
+}
+
+function abrirRecebimentoPagamento(event) {
+    const button = event.currentTarget;
+    const form = document.getElementById('jogo-pagamento-form');
+    const total = Number(button.dataset.total || 0);
+    const pago = Number(button.dataset.pago || 0);
+    form.dataset.pagamento = button.dataset.id;
+    form.dataset.agendamento = '';
+    form.dataset.mensalidade = '';
+    form.dataset.valorTotal = String(total);
+    form.dataset.valorPago = String(pago);
+    document.getElementById('jogo-pagamento-resumo').textContent =
+        `${button.dataset.cliente} · ${button.dataset.quadra} · Total ${formatarMoeda(total)} · Recebido ${formatarMoeda(pago)} · Saldo ${formatarMoeda(total - pago)}`;
+    const inputValor = document.getElementById('jogo-pagamento-valor');
+    inputValor.value = '';
+    inputValor.max = String(Math.max(total - pago, 0));
+    document.getElementById('jogo-pagamento-forma').value = '';
+    document.getElementById('jogo-pagamento-data').value = dataLocalISO(new Date());
+    document.getElementById('jogo-pagamento-observacoes').value = '';
+    document.getElementById('jogo-pagamento-dialog').showModal();
 }
 
 async function carregarHistoricoPagamento(id) {
@@ -779,15 +877,22 @@ async function carregarHistoricoPagamento(id) {
     dialog.showModal();
 
     try {
-        const response = await fetch(
-            `/pagamentos/${encodeURIComponent(id)}/historico`
-        );
-        const historico = await response.json();
-        if (!response.ok) {
+        const [respostaStatus, respostaRecebimentos] = await Promise.all([
+            fetch(`/pagamentos/${encodeURIComponent(id)}/historico`),
+            fetch(`/pagamentos/${encodeURIComponent(id)}/recebimentos`)
+        ]);
+        const [historico, recebimentos] = await Promise.all([
+            respostaStatus.json(),
+            respostaRecebimentos.json()
+        ]);
+        if (!respostaStatus.ok) {
             throw new Error(historico.detail || 'Erro ao carregar histórico.');
         }
-        conteudo.innerHTML = historico.length
-            ? `<ol>${historico.map(item => `
+        if (!respostaRecebimentos.ok) {
+            throw new Error(recebimentos.detail || 'Erro ao carregar recebimentos.');
+        }
+        const historicoStatus = historico.length
+            ? `<h4>Alterações de status</h4><ol>${historico.map(item => `
                 <li>
                     <strong>${escaparHTML(item.status_anterior)}</strong>
                     → ${escaparHTML(item.status_novo)}
@@ -795,6 +900,17 @@ async function carregarHistoricoPagamento(id) {
                 </li>
               `).join('')}</ol>`
             : '<p>Nenhuma alteração de status registrada.</p>';
+        const historicoRecebimentos = recebimentos.length
+            ? `<h4>Parcelas recebidas</h4><ol>${recebimentos.map(item => `
+                <li>
+                    <strong>${formatarMoeda(item.valor_recebido)}</strong>
+                    · ${escaparHTML(item.metodo_pagamento)}
+                    <small>${escaparHTML(item.data_hora_recebimento)} · ${escaparHTML(item.nome_usuario)}</small>
+                    ${item.observacoes ? `<small>${escaparHTML(item.observacoes)}</small>` : ''}
+                </li>
+              `).join('')}</ol>`
+            : '<p>Nenhuma parcela individual registrada.</p>';
+        conteudo.innerHTML = historicoStatus + historicoRecebimentos;
     } catch (erro) {
         conteudo.textContent = erro.message;
     }
@@ -817,17 +933,21 @@ async function salvarPagamento() {
 
     const status = document.getElementById('pagamento-status').value;
     const valorPago = Number(document.getElementById('pagamento-valor').value);
+    const formaPagamento = document.getElementById('pagamento-forma').value;
+    const dataPagamento = document.getElementById('pagamento-data').value;
+    if (valorPago > 0 && (!formaPagamento || !dataPagamento)) {
+        alert('Informe a forma e a data de cada valor recebido.');
+        return;
+    }
     const pagamento = {
         [ehMensalidade ? 'mensalidade_id' : 'agendamento_id']:
             Number(referencia),
         competencia: ehMensalidade
             ? document.getElementById('pagamento-competencia').value
             : null,
-        valor_pago: status === 'Recebido' ? valorPago : 0,
-        data_pagamento:
-            document.getElementById('pagamento-data').value || null,
-        forma_pagamento:
-            document.getElementById('pagamento-forma').value || null,
+        valor_pago: valorPago,
+        data_pagamento: dataPagamento || null,
+        forma_pagamento: formaPagamento || null,
         status,
         observacao:
             document.getElementById('pagamento-observacao').value.trim() || null
@@ -860,18 +980,6 @@ async function atualizarStatusPagamento(event) {
     const pagamento = {
         status: select.value
     };
-    if (pagamento.status === 'Recebido') {
-        const valorAtual = prompt('Informe o valor recebido:');
-        if (valorAtual === null) {
-            await carregarPagamentos();
-            return;
-        }
-        pagamento.valor_pago = Number(valorAtual);
-        pagamento.forma_pagamento =
-            prompt('Forma de pagamento (PIX, Dinheiro, Cartão ou Outro):');
-        pagamento.data_pagamento = dataLocalISO(new Date());
-    }
-
     try {
         const response = await fetch(`/pagamentos/${encodeURIComponent(id)}`, {
             method: 'PUT',
@@ -1848,13 +1956,17 @@ function configurarAgendamentos() {
         form.dataset.agendamento = botao.dataset.agendamento || '';
         form.dataset.mensalidade = botao.dataset.mensalidade || '';
         form.dataset.valorTotal = botao.dataset.valor;
+        form.dataset.valorPago = botao.dataset.pago || '0';
         const total = Number(botao.dataset.valor || 0);
         const pago = Number(botao.dataset.pago || 0);
         document.getElementById('jogo-pagamento-resumo').textContent =
             `${botao.dataset.cliente} · ${botao.dataset.quadra} · ${formatarData(botao.dataset.data)} ${formatarHorario(botao.dataset.horario)} · Total ${formatarMoeda(total)} · Recebido ${formatarMoeda(pago)} · Devido ${formatarMoeda(Math.max(total - pago, 0))}`;
-        document.getElementById('jogo-pagamento-total').value = pago;
-        document.getElementById('jogo-pagamento-total').max = total;
+        const inputValor = document.getElementById('jogo-pagamento-valor');
+        inputValor.value = '';
+        inputValor.max = String(Math.max(total - pago, 0));
+        document.getElementById('jogo-pagamento-forma').value = '';
         document.getElementById('jogo-pagamento-data').value = dataLocalISO(new Date());
+        document.getElementById('jogo-pagamento-observacoes').value = '';
         document.getElementById('jogo-pagamento-dialog').showModal();
     }
 
@@ -1862,11 +1974,13 @@ function configurarAgendamentos() {
         event.preventDefault();
         const form = event.currentTarget;
         const valorTotal = Number(form.dataset.valorTotal);
-        const valorPago = Number(document.getElementById('jogo-pagamento-total').value);
+        const valorPago = Number(form.dataset.valorPago || 0);
+        const valorRecebido = Number(document.getElementById('jogo-pagamento-valor').value);
         const forma = document.getElementById('jogo-pagamento-forma').value;
         const data = document.getElementById('jogo-pagamento-data').value;
-        if (!Number.isFinite(valorPago) || valorPago <= 0 || valorPago > valorTotal) {
-            alert('Informe o total acumulado recebido, maior que zero e até o total do jogo.');
+        if (!Number.isFinite(valorRecebido) || valorRecebido <= 0 ||
+            valorRecebido > valorTotal - valorPago) {
+            alert('Informe somente uma parcela maior que zero e até o saldo pendente.');
             return;
         }
         if (!forma || !data) {
@@ -1893,15 +2007,14 @@ function configurarAgendamentos() {
                 if (!criado.ok) throw new Error(resultadoCriacao.detail || 'Não foi possível criar o registro de pagamento.');
                 pagamentoId = Number(resultadoCriacao.id);
             }
-            const status = valorPago >= valorTotal ? 'Recebido' : 'Pendente';
-            const resposta = await fetch(`/pagamentos/${pagamentoId}`, {
-                method: 'PUT',
+            const resposta = await fetch(`/pagamentos/${pagamentoId}/recebimentos`, {
+                method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    status,
-                    valor_pago: valorPago,
-                    forma_pagamento: forma,
-                    data_pagamento: data
+                    valor_recebido: valorRecebido,
+                    metodo_pagamento: forma,
+                    data_pagamento: data,
+                    observacoes: document.getElementById('jogo-pagamento-observacoes').value.trim() || null
                 })
             });
             const resultado = await resposta.json();
@@ -2976,7 +3089,9 @@ function renderizarMensalistas() {
                 <span class="${
                     item.status === 'Ativa'
                         ? 'mensalidade-ativa'
-                        : 'mensalidade-encerrada'
+                        : item.status === 'Pendente'
+                            ? 'mensalidade-pendente'
+                            : 'mensalidade-encerrada'
                 }">
 
                     ${escaparHTML(
@@ -3000,7 +3115,12 @@ function renderizarMensalistas() {
                                 Encerrar
                             </button>
                         `
-                        : '-'
+                        : item.status === 'Pendente'
+                            ? `<button class="btn-destaque"
+                                onclick="ativarMensalidade(${Number(item.id)})">
+                                Aprovar solicitação
+                               </button>`
+                            : '-'
                 }
 
             </td>
@@ -3630,7 +3750,6 @@ async function encerrarMensalidade(id) {
         return;
     }
 
-
     const hoje =
         new Date()
             .toISOString()
@@ -3688,6 +3807,23 @@ async function encerrarMensalidade(id) {
 
     }
 
+}
+
+async function ativarMensalidade(id) {
+    try {
+        const resposta = await fetch(`/mensalidades/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: 'Ativa'})
+        });
+        const resultado = await resposta.json();
+        if (!resposta.ok) {
+            throw new Error(resultado.detail || 'Não foi possível aprovar a mensalidade.');
+        }
+        await carregarMensalistas();
+    } catch (erro) {
+        alert(erro.message);
+    }
 }
 
 

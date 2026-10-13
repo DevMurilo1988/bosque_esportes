@@ -60,11 +60,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const opcoesPreco =
         document.querySelector('.price-options');
 
+    const resumoSelecao =
+        document.querySelector('.booking-summary-mobile');
+
     const visualQuadra =
         document.querySelector('.court-visual');
 
     const detalhesQuadra =
         document.querySelector('.spatial-details');
+
+    const inputNome =
+        document.getElementById('input-nome');
+
+    const inputWhatsapp =
+        document.getElementById('input-whatsapp');
+
+    const btnAvancar =
+        document.getElementById('btn-avancar');
 
     const paisOriginais = [
         {
@@ -81,18 +93,18 @@ document.addEventListener('DOMContentLoaded', () => {
             elemento: opcoesPreco,
             pai: opcoesPreco.parentElement,
             proximo: opcoesPreco.nextElementSibling
+        },
+        {
+            elemento: resumoSelecao,
+            pai: resumoSelecao.parentElement,
+            proximo: resumoSelecao.nextElementSibling
+        },
+        {
+            elemento: btnAvancar,
+            pai: btnAvancar.parentElement,
+            proximo: btnAvancar.nextElementSibling
         }
     ];
-
-    const inputNome =
-        document.getElementById('input-nome');
-
-    const inputWhatsapp =
-        document.getElementById('input-whatsapp');
-
-    const btnAvancar =
-        document.getElementById('btn-avancar');
-
 
     // ==================================================
     // VARIÁVEIS
@@ -105,18 +117,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let mensalidades = [];
     let agendamentos = [];
     let atualizandoAgendamentos = false;
+    let tipoReservaSelecionado = 'avulso';
 
     ajustarLayoutResponsivo();
     window.addEventListener('resize', ajustarLayoutResponsivo);
+    document.querySelectorAll('[data-booking-type]').forEach(botao => {
+        botao.addEventListener('click', () => {
+            const tipoSelecionado = botao.dataset.bookingType;
+            if (tipoSelecionado === 'mensal' && !valorDisponivel('mensal')) return;
+            tipoReservaSelecionado = tipoSelecionado;
+            atualizarTipoReserva();
+        });
+    });
 
 
     function ajustarLayoutResponsivo() {
 
-        if (window.matchMedia('(max-width: 620px)').matches) {
+        if (window.matchMedia('(max-width: 768px)').matches) {
             visualQuadra.appendChild(selecaoReserva);
             visualQuadra.appendChild(grupoHorarios);
-            cartaoQuadra.insertBefore(opcoesPreco, detalhesQuadra);
-            opcoesPreco.classList.add('is-mobile-position');
+            visualQuadra.appendChild(opcoesPreco);
+            cartaoQuadra.insertBefore(resumoSelecao, detalhesQuadra);
+            cartaoQuadra.insertBefore(btnAvancar, detalhesQuadra);
             return;
         }
 
@@ -401,6 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
                         horarioSelecionado = null;
+                        atualizarTipoReserva();
 
                         containerHorarios.innerHTML = '';
 
@@ -436,6 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         horarioSelecionado = null;
                         atualizarDisponibilidade();
                         atualizarStatusReserva();
+                        atualizarTipoReserva();
 
                     }
                 );
@@ -544,6 +568,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? formatarMoeda(valorMensal)
                 : 'Consulte';
 
+        if (tipoReservaSelecionado === 'mensal' && !(valorMensal > 0)) {
+            tipoReservaSelecionado = 'avulso';
+        }
+        atualizarTipoReserva();
         atualizarStatusReserva();
 
     }
@@ -558,6 +586,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'Selecione uma quadra acima para conferir os detalhes e os valores.';
         elementoPreco.textContent = '—';
         elementoPrecoMensal.textContent = '—';
+        tipoReservaSelecionado = 'avulso';
+        atualizarTipoReserva();
         cartaoQuadra.dataset.tipo = '';
         imagemQuadra.hidden = true;
         imagemQuadra.removeAttribute('src');
@@ -601,7 +631,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 currency: 'BRL'
             }
         );
+    }
 
+    function valorDisponivel(tipoSelecionado) {
+        const valor = tipoSelecionado === 'mensal'
+            ? Number(quadraSelecionada && quadraSelecionada.valor_mensal)
+            : Number(quadraSelecionada && quadraSelecionada.valor);
+        return Number.isFinite(valor) && valor > 0;
+    }
+
+    function atualizarTipoReserva() {
+        document.querySelectorAll('[data-booking-type]').forEach(botao => {
+            const selecionado = botao.dataset.bookingType === tipoReservaSelecionado;
+            botao.setAttribute('aria-pressed', String(selecionado));
+            botao.disabled = botao.dataset.bookingType === 'mensal' &&
+                !valorDisponivel('mensal');
+        });
+        const nomeTipo = tipoReservaSelecionado === 'mensal' ? 'Mensal' : 'Avulso';
+        const valor = tipoReservaSelecionado === 'mensal'
+            ? Number(quadraSelecionada && quadraSelecionada.valor_mensal)
+            : Number(quadraSelecionada && quadraSelecionada.valor);
+        const quadra = quadraSelecionada ? quadraSelecionada.nome : '—';
+        const horario = horarioSelecionado || '—';
+        const valorTexto = Number.isFinite(valor) && valor > 0
+            ? `${formatarMoeda(valor)}${tipoReservaSelecionado === 'mensal' ? '/mês' : '/hora'}`
+            : 'Consulte';
+        document.getElementById('booking-summary-text').textContent =
+            `Quadra: ${quadra} | Horário: ${horario} | Tipo: ${nomeTipo} | Valor: ${valorTexto}`;
     }
 
 
@@ -664,6 +720,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (tipoReservaSelecionado === 'mensal') {
+            solicitarMensalidade();
+            return;
+        }
 
         // ==================================================
         // CONFERE NOVAMENTE A DISPONIBILIDADE
@@ -835,6 +895,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }
 
+    function solicitarMensalidade() {
+        const mensal = Number(quadraSelecionada.valor_mensal);
+        if (!Number.isFinite(mensal) || mensal <= 0) {
+            alert('O valor mensal desta quadra não está configurado.');
+            return;
+        }
+        const dataSelecionada = new Date(`${inputDate.value}T12:00:00`);
+        const dados = {
+            nome: inputNome.value.trim(),
+            contato: inputWhatsapp.value.trim(),
+            quadra_id: Number(quadraSelecionada.id),
+            dia_semana: dataSelecionada.getDay(),
+            horario: horarioSelecionado,
+            data_inicio: inputDate.value
+        };
+        btnAvancar.disabled = true;
+        btnAvancar.textContent = 'ENVIANDO...';
+        fetch('/solicitacoes-mensais', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(dados)
+        })
+            .then(async response => {
+                const resultado = await response.json();
+                if (!response.ok) {
+                    throw new Error(resultado.detail || 'Não foi possível solicitar a mensalidade.');
+                }
+                return resultado;
+            })
+            .then(() => {
+                alert('Solicitação mensal registrada. A equipe confirmará a disponibilidade e os próximos passos.');
+                limparFormulario();
+                carregarAgendamentos();
+            })
+            .catch(error => {
+                console.error('Erro ao solicitar mensalidade:', error);
+                alert(error.message || 'Não foi possível solicitar a mensalidade.');
+            })
+            .finally(() => {
+                btnAvancar.disabled = false;
+                btnAvancar.textContent = 'Solicitar reserva';
+            });
+    }
+
 
     // ==================================================
     // LIMPAR FORMULÁRIO
@@ -844,7 +948,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         horarioSelecionado = null;
 
-        quadraSelecionada = null;
+        tipoReservaSelecionado = 'avulso';
 
 
         selectQuadra.value = '';
@@ -861,6 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         limparResumoQuadra();
         atualizarInstrucaoHorarios();
+        atualizarTipoReserva();
 
     }
 
@@ -1118,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 horarioSelecionado = textoHorario;
                 horario.classList.add('active');
                 botaoSelecionado = horario;
+                atualizarTipoReserva();
 
             }
 
@@ -1143,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     horarioSelecionado =
                         textoHorario;
                     atualizarStatusReserva();
+                    atualizarTipoReserva();
 
 
                     if (botaoSelecionado) {

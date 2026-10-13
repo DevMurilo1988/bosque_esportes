@@ -43,7 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Normalize the modality labels so configured prices always match
         // whether the database stores the label or the internal value.
         if (quadras.length === 0) {
-            elemento.textContent = 'Valores sob consulta';
+            elemento.innerHTML =
+                '<span>Avulso: Sob consulta</span>' +
+                '<span>Mensal: Sob consulta</span>';
             return;
         }
 
@@ -56,7 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         if (precos.length === 0) {
-            elemento.textContent = 'Valores sob consulta';
+            elemento.innerHTML =
+                '<span>Avulso: Sob consulta</span>' +
+                '<span>Mensal: Sob consulta</span>';
             return;
         }
 
@@ -80,13 +84,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const valoresMensais = quadras
             .map(quadra => Number(quadra.valor_mensal))
             .filter(valor => Number.isFinite(valor) && valor > 0);
-        const mensal = valoresMensais.length
-            ? ` · mensal a partir de ${Math.min(...valoresMensais).toLocaleString('pt-BR', {
+        const menorMensal = valoresMensais.length
+            ? Math.min(...valoresMensais).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
-            })}`
-            : '';
-        elemento.textContent = `A partir de ${precoFormatado}/h${mensal}`;
+            })
+            : 'Sob consulta';
+        elemento.innerHTML =
+            `<span>Avulso: ${precoFormatado}/hora</span>` +
+            `<span>Mensal: ${menorMensal}/mês</span>`;
 
     }
 
@@ -108,13 +114,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!quadrasDaModalidade.length) return;
         const quadra = quadrasDaModalidade[0];
+        const quantidade = quadrasDaModalidade.length;
         const badge = document.querySelector(`[data-home-badge="${tipo}"]`);
         const descricao = document.querySelector(`[data-home-description="${tipo}"]`);
-        const medidas = quadra.medidas ? ` · ${quadra.medidas}` : '';
         if (badge) {
-            badge.textContent = `${quadra.nome}${quadrasDaModalidade.length > 1
-                ? ` + ${quadrasDaModalidade.length - 1}`
-                : ''}${medidas}`;
+            badge.textContent = `${quantidade} ${
+                quantidade === 1 ? 'quadra disponível' : 'quadras disponíveis'
+            }${quadra.medidas ? ` · ${quadra.medidas}` : ''}`;
         }
         if (descricao && quadra.descricao) descricao.textContent = quadra.descricao;
         if (card && quadra.imagem && /^\/frontend\/(?!\/)[A-Za-z0-9/_.,-]+$/.test(quadra.imagem)) {

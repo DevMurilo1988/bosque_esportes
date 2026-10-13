@@ -8,7 +8,7 @@
     <title>Agendamento - Bosque Esportes</title>
 
     <link rel="stylesheet" href="/frontend/css/global.css">
-    <link rel="stylesheet" href="/frontend/css/agendamento.css?v=14">
+    <link rel="stylesheet" href="/frontend/css/agendamento.css?v=15">
 </head>
 
 <body>
@@ -163,19 +163,28 @@
                         </div>
                     </div>
 
-                    <div class="price-options" aria-label="Valores da quadra">
-                        <div class="price-card">
-                            <span>RESERVA AVULSA</span>
+                    <div class="price-options" aria-label="Tipo de reserva">
+                        <button class="price-card" type="button"
+                            data-booking-type="avulso" aria-pressed="true">
+                            <span>AVULSO · POR HORA</span>
                             <strong id="display-preco">—</strong>
-                            <small>por hora</small>
-                        </div>
-                        <div class="price-card monthly-price">
-                            <span>PLANO MENSAL</span>
+                            <small>Reserva de uma hora</small>
+                        </button>
+                        <button class="price-card monthly-price" type="button"
+                            data-booking-type="mensal" aria-pressed="false">
+                            <span>MENSAL · RECORRENTE</span>
                             <strong id="display-preco-mensal">—</strong>
-                            <small>por mês</small>
-                        </div>
+                            <small>Toda semana, a partir da data selecionada</small>
+                        </button>
                     </div>
                 </div>
+
+                <section class="booking-summary-mobile" aria-live="polite">
+                    <span>Resumo da seleção</span>
+                    <strong id="booking-summary-text">
+                        Quadra: — | Horário: — | Tipo: Avulso | Valor: —
+                    </strong>
+                </section>
             </article>
         </section>
     </main>
@@ -185,7 +194,7 @@
          JAVASCRIPT
     ========================================== -->
 
-    <script src="/frontend/js/agendamento.js?v=14"></script>
+    <script src="/frontend/js/agendamento.js?v=15"></script>
 
 </body>
 

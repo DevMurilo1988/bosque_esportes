@@ -846,6 +846,159 @@ body {
     color: #7ee2a9;
 }
 
+.payment-period-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 10px;
+}
+
+.payment-period-filter button,
+.payment-record-card footer button,
+.payment-record-card footer select {
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #343a43;
+    border-radius: 8px;
+    color: #e7edf3;
+    background: #181b20;
+    font: inherit;
+    cursor: pointer;
+}
+
+.payment-period-filter button.active {
+    border-color: #38c172;
+    color: #07110b;
+    background: #38c172;
+    font-weight: 700;
+}
+
+.payment-period-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.payment-period-summary article {
+    display: grid;
+    gap: 5px;
+    padding: 14px;
+    border: 1px solid #303640;
+    border-radius: 10px;
+    background: #13171d;
+}
+
+.payment-period-summary span,
+.payment-record-card header span,
+.payment-transaction span,
+.payment-transaction small {
+    color: #9da6b1;
+    font-size: 12px;
+}
+
+.payment-period-summary strong {
+    font-size: 20px;
+}
+
+.payment-record-list {
+    display: grid;
+    gap: 12px;
+}
+
+.payment-load-error {
+    padding: 20px;
+    color: #e55353;
+    text-align: center;
+}
+
+.payment-record-card {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #303640;
+    border-radius: 10px;
+    background: #181b20;
+}
+
+.payment-record-card > header,
+.payment-record-card > footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.payment-record-card > header > div {
+    display: grid;
+    gap: 3px;
+}
+
+.payment-record-card > header > div > span {
+    overflow-wrap: anywhere;
+}
+
+.payment-status-badge {
+    padding: 4px 8px;
+    border: 1px solid #59616c;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.payment-record-values {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.payment-record-values > span {
+    display: grid;
+    gap: 3px;
+    color: #9da6b1;
+    font-size: 11px;
+}
+
+.payment-record-values strong {
+    color: #fff;
+    font-size: 14px;
+}
+
+.payment-transactions {
+    padding: 10px 0;
+    border-top: 1px solid #303640;
+    border-bottom: 1px solid #303640;
+}
+
+.payment-transactions h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+.payment-transactions > p {
+    color: #9da6b1;
+    font-size: 12px;
+}
+
+.payment-transaction {
+    display: grid;
+    gap: 3px;
+    padding: 8px 0;
+}
+
+.payment-transaction + .payment-transaction {
+    border-top: 1px solid #292d34;
+}
+
+.payment-record-card > footer {
+    justify-content: flex-start;
+    margin-top: 10px;
+}
+
+.payment-history-heading button {
+    min-height: 38px;
+}
+
 .admin-permission-courts {
     margin-top: 18px;
     padding: 12px;
@@ -1308,6 +1461,11 @@ tr:hover td {
     font-weight: bold;
 }
 
+.mensalidade-pendente {
+    color: #f0b429;
+    font-weight: bold;
+}
+
 .mensalidade-encerrada {
     color: #8f969f;
 }
@@ -1455,7 +1613,7 @@ tr:hover td {
 /* RESPONSIVO */
 /* ========================= */
 
-@media (max-width: 1000px) {
+@media (max-width: 768px) {
 
     .resumo {
         grid-template-columns: repeat(2, 1fr);
@@ -1472,7 +1630,7 @@ tr:hover td {
 
 }
 
-@media (max-width: 850px) {
+@media (max-width: 768px) {
 
     .report-grid {
         grid-template-columns: minmax(0, 1fr);
@@ -1490,7 +1648,7 @@ tr:hover td {
 }
 
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
 
     .admin-header {
         display: grid;
@@ -1602,13 +1760,58 @@ tr:hover td {
     }
 
     .day-games-panel {
-        margin: 12px;
-        padding: 12px;
+        margin: 4px 12px 12px;
+        padding: 10px;
     }
 
     .day-games-toolbar {
         align-items: stretch;
         flex-direction: column;
+        gap: 6px;
+        margin-bottom: 5px;
+    }
+
+    .section-header {
+        margin-bottom: 6px;
+    }
+
+    .payment-period-filter {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .payment-period-filter button {
+        width: 100%;
+    }
+
+    .payment-record-card {
+        padding: 12px;
+    }
+
+    .payment-record-card > header {
+        align-items: flex-start;
+    }
+
+    .payment-record-values {
+        gap: 5px;
+    }
+
+    .payment-record-values strong {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+    }
+
+    .payment-record-card > footer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .payment-record-card > footer button,
+    .payment-record-card > footer select {
+        width: 100%;
+        min-width: 0;
+        padding: 7px;
+        font-size: 12px;
     }
 
     .admin-user-card-heading {
@@ -1705,7 +1908,7 @@ tr:hover td {
 
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
     .filtro input[type="date"] {
         color-scheme: dark;
     }

@@ -4,10 +4,12 @@ import hmac
 import html
 import json
 import logging
+import math
 import os
 import re
 import secrets
 from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.error import HTTPError, URLError
@@ -223,6 +225,7 @@ async def proteger_rotas_administrativas(request: Request, call_next):
         ("GET", "/configuracoes"),
         ("GET", "/disponibilidade"),
         ("POST", "/agendamentos"),
+        ("POST", "/solicitacoes-mensais"),
         ("GET", "/admin/sessao"),
         ("POST", "/admin/login"),
         ("POST", "/admin/logout"),
@@ -248,7 +251,7 @@ async def proteger_rotas_administrativas(request: Request, call_next):
     try:
         cursor.execute(
             """
-            SELECT s.usuario_admin_id, u.nivel
+            SELECT s.usuario_admin_id, u.nivel, u.nome
             FROM sessao_admin s
             INNER JOIN usuario_admin u
                 ON u.id = s.usuario_admin_id
@@ -265,9 +268,10 @@ async def proteger_rotas_administrativas(request: Request, call_next):
                 status_code=401,
                 content={"detail": "Sessão administrativa inválida ou expirada."}
             )
-        usuario_admin_id, nivel = sessao
+        usuario_admin_id, nivel, nome_usuario = sessao
         request.state.usuario_admin_id = usuario_admin_id
         request.state.nivel_admin = nivel
+        request.state.nome_usuario_admin = nome_usuario
 
         modulo = modulo_da_rota_admin(caminho)
         if caminho.startswith("/admin/usuarios") and nivel != "root":
@@ -897,6 +901,15 @@ class AtualizarMensalidade(BaseModel):
     data_encerramento: Optional[str] = None
 
 
+class SolicitacaoMensalidade(BaseModel):
+    nome: str
+    contato: str
+    quadra_id: int
+    dia_semana: int
+    horario: str
+    data_inicio: str
+
+
 class NovoPagamentoMensalidade(BaseModel):
     competencia: str
     valor: float
@@ -904,6 +917,13 @@ class NovoPagamentoMensalidade(BaseModel):
     status: str = "Pago"
     forma_pagamento: Optional[str] = None
     observacao: Optional[str] = None
+
+
+class NovoRecebimento(BaseModel):
+    valor_recebido: float
+    data_pagamento: Optional[str] = None
+    metodo_pagamento: str
+    observacoes: Optional[str] = None
 
 
 class LoginAdmin(BaseModel):
@@ -3138,16 +3158,122 @@ def criar_mensalidade(
         conexao.close()
 
 
+@app.post("/solicitacoes-mensais")
+def criar_solicitacao_mensalidade(dados: SolicitacaoMensalidade):
+    if dados.dia_semana < 0 or dados.dia_semana > 6:
+        raise HTTPException(status_code=400, detail="Dia da semana inválido.")
+    try:
+        data_inicio = datetime.strptime(dados.data_inicio, "%Y-%m-%d").date()
+        horario = datetime.strptime(dados.horario, "%H:%M").time()
+        if data_inicio.isoformat() != dados.data_inicio or data_inicio < date.today():
+            raise ValueError
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Informe uma data inicial e um horário válidos.")
+
+    if data_inicio.weekday() != (dados.dia_semana + 6) % 7:
+        raise HTTPException(status_code=400, detail="O dia da semana não corresponde à data inicial.")
+
+    conexao = conectar_banco()
+    cursor = conexao.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id, valor_mensal
+            FROM quadra
+            WHERE id = %s AND ativo = 1
+            FOR UPDATE
+            """,
+            (dados.quadra_id,)
+        )
+        quadra = cursor.fetchone()
+        if not quadra:
+            raise HTTPException(status_code=404, detail="Quadra não encontrada ou inativa.")
+        valor_mensal = Decimal(str(quadra[1] or 0))
+        if valor_mensal <= 0:
+            raise HTTPException(status_code=400, detail="O valor mensal desta quadra não está configurado.")
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM mensalidade
+            WHERE quadra_id = %s AND dia_semana = %s AND horario = %s
+              AND status IN ('Ativa', 'Pendente')
+              AND (data_encerramento IS NULL OR data_encerramento >= %s)
+            LIMIT 1
+            """,
+            (dados.quadra_id, dados.dia_semana, horario, data_inicio)
+        )
+        if cursor.fetchone():
+            raise HTTPException(status_code=409, detail="Já existe uma solicitação ou mensalidade para este dia e horário.")
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM agendamento
+            WHERE quadra_id = %s AND horario = %s
+              AND status IN ('Pendente', 'Confirmado')
+              AND data >= %s
+              AND DAYOFWEEK(data) - 1 = %s
+            ORDER BY data, id
+            LIMIT 1
+            """,
+            (dados.quadra_id, horario, data_inicio, dados.dia_semana)
+        )
+        reserva = cursor.fetchone()
+        if reserva:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Já existe uma reserva ou solicitação neste dia e horário (agendamento #{reserva[0]})."
+            )
+
+        nome = normalizar_nome_cliente(dados.nome)
+        contato = dados.contato.strip()
+        if not nome or not contato:
+            raise HTTPException(status_code=400, detail="Informe nome e WhatsApp.")
+        cliente_id, _ = obter_ou_criar_cliente(cursor, nome, contato)
+        cursor.execute(
+            """
+            INSERT INTO mensalidade
+                (cliente_id, quadra_id, dia_semana, horario, valor_mensal,
+                 data_inicio, observacao, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'Pendente')
+            """,
+            (
+                cliente_id,
+                dados.quadra_id,
+                dados.dia_semana,
+                horario,
+                valor_mensal,
+                data_inicio,
+                "Solicitação mensal pelo site."
+            )
+        )
+        mensalidade_id = cursor.lastrowid
+        conexao.commit()
+        return {
+            "mensagem": "Solicitação mensal registrada; aguarda confirmação administrativa.",
+            "id": mensalidade_id,
+            "status": "Pendente",
+            "valor_mensal": float(valor_mensal)
+        }
+    except HTTPException:
+        conexao.rollback()
+        raise
+    except Exception as erro:
+        conexao.rollback()
+        raise HTTPException(status_code=500, detail=str(erro))
+    finally:
+        cursor.close()
+        conexao.close()
+
+
 @app.put("/mensalidades/{mensalidade_id}")
 def atualizar_mensalidade(
     mensalidade_id: int,
     dados: AtualizarMensalidade
 ):
 
-    status_validos = [
-        "Ativa",
-        "Encerrada"
-    ]
+    status_validos = ["Pendente", "Ativa", "Encerrada"]
 
     if dados.status not in status_validos:
 
@@ -3165,14 +3291,16 @@ def atualizar_mensalidade(
 
         cursor.execute(
             """
-            SELECT id
+            SELECT quadra_id, dia_semana, horario, data_inicio,
+                   data_encerramento, status
             FROM mensalidade
             WHERE id = %s
+            FOR UPDATE
             """,
             (mensalidade_id,)
         )
-
-        if not cursor.fetchone():
+        mensalidade_atual = cursor.fetchone()
+        if not mensalidade_atual:
 
             raise HTTPException(
                 status_code=404,
@@ -3180,6 +3308,58 @@ def atualizar_mensalidade(
                     "Mensalidade não encontrada."
                 )
             )
+
+        if dados.status == "Ativa":
+            cursor.execute(
+                """
+                SELECT id
+                FROM mensalidade
+                WHERE id <> %s
+                  AND quadra_id = %s
+                  AND dia_semana = %s
+                  AND horario = %s
+                  AND status = 'Ativa'
+                  AND (data_encerramento IS NULL OR data_encerramento >= %s)
+                  AND data_inicio <= COALESCE(%s, '9999-12-31')
+                LIMIT 1
+                """,
+                (
+                    mensalidade_id,
+                    mensalidade_atual[0],
+                    mensalidade_atual[1],
+                    mensalidade_atual[2],
+                    mensalidade_atual[3],
+                    mensalidade_atual[4]
+                )
+            )
+            if cursor.fetchone():
+                raise HTTPException(status_code=409, detail="Já existe uma mensalidade ativa neste dia e horário.")
+            cursor.execute(
+                """
+                SELECT id
+                FROM agendamento
+                WHERE quadra_id = %s AND horario = %s
+                  AND status IN ('Pendente', 'Confirmado')
+                  AND data >= %s
+                  AND (%s IS NULL OR data <= %s)
+                  AND DAYOFWEEK(data) - 1 = %s
+                LIMIT 1
+                """,
+                (
+                    mensalidade_atual[0],
+                    mensalidade_atual[2],
+                    mensalidade_atual[3],
+                    mensalidade_atual[4],
+                    mensalidade_atual[4],
+                    mensalidade_atual[1]
+                )
+            )
+            reserva_conflitante = cursor.fetchone()
+            if reserva_conflitante:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Há um agendamento conflitante (#{reserva_conflitante[0]}) para este horário."
+                )
 
         campos = [
             "status = %s"
@@ -3345,7 +3525,8 @@ def listar_pagamentos_mensalidade(
 )
 def criar_pagamento_mensalidade(
     mensalidade_id: int,
-    dados: NovoPagamentoMensalidade
+    dados: NovoPagamentoMensalidade,
+    request: Request
 ):
 
     status_validos = ["Pago", "Pendente", "Cancelado"]
@@ -3505,6 +3686,25 @@ def criar_pagamento_mensalidade(
                 "Recebido" if dados.status == "Pago" else dados.status
             )
         )
+        if valor_pago > 0:
+            cursor.execute(
+                """
+                INSERT INTO pagamento_recebimento
+                    (pagamento_id, valor_recebido, data_hora_recebimento,
+                     usuario_recebedor_id, nome_usuario, metodo_pagamento,
+                     observacoes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    pagamento_id,
+                    valor_pago,
+                    datetime.combine(data_pagamento or date.today(), datetime.now().time()),
+                    request.state.usuario_admin_id,
+                    request.state.nome_usuario_admin,
+                    dados.forma_pagamento,
+                    dados.observacao
+                )
+            )
 
         conexao.commit()
 
@@ -3709,7 +3909,7 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
         raise HTTPException(status_code=400, detail="Status de pagamento inválido.")
     if dados.forma_pagamento and dados.forma_pagamento not in formas_validas:
         raise HTTPException(status_code=400, detail="Forma de pagamento inválida.")
-    if dados.valor_pago < 0:
+    if not math.isfinite(dados.valor_pago) or dados.valor_pago < 0:
         raise HTTPException(status_code=400, detail="O valor recebido não pode ser negativo.")
     competencia = None
     if dados.mensalidade_id:
@@ -3728,12 +3928,15 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
             status_code=400,
             detail="Competência só deve ser informada para mensalidades."
         )
-    if dados.status == "Recebido" and (
-        dados.valor_pago <= 0 or not dados.forma_pagamento
-    ):
+    if dados.status == "Recebido" and dados.valor_pago <= 0:
         raise HTTPException(
             status_code=400,
-            detail="Informe um valor recebido e a forma de pagamento."
+            detail="Informe um valor recebido."
+        )
+    if dados.valor_pago > 0 and not dados.forma_pagamento:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe a forma de pagamento do valor recebido."
         )
 
     data_pagamento = None
@@ -3747,7 +3950,7 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
                 raise ValueError
         except ValueError:
             raise HTTPException(status_code=400, detail="Data do pagamento inválida.")
-    elif dados.status == "Recebido":
+    elif dados.valor_pago > 0:
         data_pagamento = date.today()
 
     conexao = conectar_banco()
@@ -3812,13 +4015,6 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
                 raise HTTPException(
                     status_code=409,
                     detail="O valor informado excede o saldo desta reserva."
-                )
-            if dados.status == "Recebido" and (
-                total_ja_pago + dados.valor_pago < valor_total
-            ):
-                raise HTTPException(
-                    status_code=409,
-                    detail="Para finalizar o pagamento, registre o valor total da reserva."
                 )
         else:
             cursor.execute(
@@ -3888,11 +4084,13 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
                     detail="O valor informado excede o valor da competência mensal."
                 )
 
-        if dados.status == "Recebido" and dados.valor_pago < valor_total:
-            raise HTTPException(
-                status_code=409,
-                detail="O pagamento só pode ser marcado como recebido quando o total estiver quitado."
-            )
+        status_final = (
+            "Recebido"
+            if dados.status != "Cancelado"
+            and dados.valor_pago > 0
+            and dados.valor_pago >= valor_total
+            else "Pendente" if dados.status == "Recebido" else dados.status
+        )
 
         cursor.execute(
             """
@@ -3914,7 +4112,7 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
                 dados.valor_pago,
                 data_pagamento,
                 dados.forma_pagamento,
-                dados.status,
+                status_final,
                 dados.observacao
             )
         )
@@ -3925,11 +4123,30 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
                 (pagamento_id, status_anterior, status_novo)
             VALUES (%s, 'Novo', %s)
             """,
-            (pagamento_id, dados.status)
+            (pagamento_id, status_final)
         )
+        if dados.valor_pago > 0:
+            cursor.execute(
+                """
+                INSERT INTO pagamento_recebimento
+                    (pagamento_id, valor_recebido, data_hora_recebimento,
+                     usuario_recebedor_id, nome_usuario, metodo_pagamento,
+                     observacoes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    pagamento_id,
+                    dados.valor_pago,
+                    datetime.combine(data_pagamento or date.today(), datetime.now().time()),
+                    request.state.usuario_admin_id,
+                    request.state.nome_usuario_admin,
+                    dados.forma_pagamento,
+                    dados.observacao
+                )
+            )
         if (
             dados.agendamento_id
-            and dados.status == "Recebido"
+            and status_final == "Recebido"
             and taxa_reserva > 0
             and dados.valor_pago >= taxa_reserva
         ):
@@ -3944,7 +4161,159 @@ def criar_pagamento(dados: NovoPagamento, request: Request):
             "valor": valor,
             "taxa_reserva": taxa_reserva,
             "valor_total": valor_total,
-            "valor_pago": dados.valor_pago
+            "valor_pago": dados.valor_pago,
+            "status": status_final
+        }
+    except HTTPException:
+        conexao.rollback()
+        raise
+    except Exception as erro:
+        conexao.rollback()
+        raise HTTPException(status_code=500, detail=str(erro))
+    finally:
+        cursor.close()
+        conexao.close()
+
+
+@app.get("/pagamentos/recebimentos")
+def listar_recebimentos(quadra_id: Optional[int] = None):
+    conexao = conectar_banco()
+    cursor = conexao.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT r.id, r.pagamento_id, r.valor_recebido,
+                   r.data_hora_recebimento, r.usuario_recebedor_id,
+                   r.nome_usuario, r.metodo_pagamento, r.observacoes,
+                   p.tipo, p.competencia, c.nome AS cliente,
+                   q.nome AS quadra, p.valor_total
+            FROM pagamento_recebimento r
+            INNER JOIN pagamento p ON p.id = r.pagamento_id
+            INNER JOIN cliente c ON c.id = p.cliente_id
+            LEFT JOIN agendamento a ON a.id = p.agendamento_id
+            LEFT JOIN mensalidade m ON m.id = p.mensalidade_id
+            LEFT JOIN quadra q ON q.id = COALESCE(a.quadra_id, m.quadra_id)
+            WHERE (%s IS NULL OR q.id = %s)
+            ORDER BY r.data_hora_recebimento DESC, r.id DESC
+            """,
+            (quadra_id, quadra_id)
+        )
+        return [linha_para_dict(cursor, linha) for linha in cursor.fetchall()]
+    finally:
+        cursor.close()
+        conexao.close()
+
+
+@app.post("/pagamentos/{pagamento_id}/recebimentos")
+def registrar_recebimento(
+    pagamento_id: int,
+    dados: NovoRecebimento,
+    request: Request
+):
+    formas_validas = {"PIX", "Dinheiro", "Cartão", "Outro"}
+    if dados.metodo_pagamento not in formas_validas:
+        raise HTTPException(status_code=400, detail="Forma de pagamento inválida.")
+    try:
+        valor_recebido = Decimal(str(dados.valor_recebido)).quantize(Decimal("0.01"))
+    except (InvalidOperation, ValueError):
+        raise HTTPException(status_code=400, detail="Valor recebido inválido.")
+    if not valor_recebido.is_finite() or valor_recebido <= 0:
+        raise HTTPException(status_code=400, detail="O valor recebido deve ser maior que zero.")
+    data_pagamento = date.today()
+    if dados.data_pagamento:
+        try:
+            data_pagamento = datetime.strptime(dados.data_pagamento, "%Y-%m-%d").date()
+            if data_pagamento.isoformat() != dados.data_pagamento:
+                raise ValueError
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Data do recebimento inválida.")
+
+    conexao = conectar_banco()
+    cursor = conexao.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT status, valor_total, valor_pago, taxa_reserva,
+                   agendamento_id
+            FROM pagamento
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (pagamento_id,)
+        )
+        pagamento = cursor.fetchone()
+        if not pagamento:
+            raise HTTPException(status_code=404, detail="Pagamento não encontrado.")
+        if pagamento[0] == "Cancelado":
+            raise HTTPException(status_code=409, detail="Não é possível receber valores para um pagamento cancelado.")
+        saldo = Decimal(str(pagamento[1] or 0)) - Decimal(str(pagamento[2] or 0))
+        if valor_recebido > saldo:
+            raise HTTPException(
+                status_code=409,
+                detail=f"O recebimento excede o saldo de R$ {max(saldo, Decimal('0')):.2f}."
+            )
+
+        total_atualizado = Decimal(str(pagamento[2] or 0)) + valor_recebido
+        status_novo = "Recebido" if total_atualizado >= Decimal(str(pagamento[1])) else "Pendente"
+        data_hora = datetime.combine(data_pagamento, datetime.now().time())
+        cursor.execute(
+            """
+            INSERT INTO pagamento_recebimento
+                (pagamento_id, valor_recebido, data_hora_recebimento,
+                 usuario_recebedor_id, nome_usuario, metodo_pagamento,
+                 observacoes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                pagamento_id,
+                valor_recebido,
+                data_hora,
+                request.state.usuario_admin_id,
+                request.state.nome_usuario_admin,
+                dados.metodo_pagamento,
+                dados.observacoes
+            )
+        )
+        cursor.execute(
+            """
+            UPDATE pagamento
+            SET valor_pago = %s, status = %s, data_pagamento = %s,
+                forma_pagamento = %s,
+                observacao = COALESCE(%s, observacao)
+            WHERE id = %s
+            """,
+            (
+                total_atualizado,
+                status_novo,
+                data_pagamento,
+                dados.metodo_pagamento,
+                dados.observacoes,
+                pagamento_id
+            )
+        )
+        if pagamento[0] != status_novo:
+            cursor.execute(
+                """
+                INSERT INTO historico_status_pagamento
+                    (pagamento_id, status_anterior, status_novo)
+                VALUES (%s, %s, %s)
+                """,
+                (pagamento_id, pagamento[0], status_novo)
+            )
+        if (
+            pagamento[4] is not None
+            and status_novo == "Recebido"
+            and Decimal(str(pagamento[3] or 0)) > 0
+        ):
+            enviar_extrato_diario_telegram(cursor, str(request.base_url))
+        conexao.commit()
+        return {
+            "mensagem": "Recebimento registrado.",
+            "pagamento_id": pagamento_id,
+            "valor_recebido": float(valor_recebido),
+            "total_recebido": float(total_atualizado),
+            "saldo_pendente": float(max(Decimal(str(pagamento[1])) - total_atualizado, Decimal("0"))),
+            "status": status_novo
         }
     except HTTPException:
         conexao.rollback()
@@ -3989,6 +4358,16 @@ def atualizar_pagamento(
             raise HTTPException(status_code=404, detail="Pagamento não encontrado.")
 
         status_anterior = pagamento[0]
+        if dados.valor_pago is not None:
+            if not math.isfinite(dados.valor_pago):
+                raise HTTPException(status_code=400, detail="Valor recebido inválido.")
+            if Decimal(str(dados.valor_pago)).quantize(
+                Decimal("0.01")
+            ) != Decimal(str(pagamento[5] or 0)).quantize(Decimal("0.01")):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Os valores recebidos não podem ser sobrescritos. Registre cada parcela como um novo recebimento."
+                )
         valor_pago = (
             dados.valor_pago
             if dados.valor_pago is not None
@@ -4135,6 +4514,28 @@ def atualizar_pagamento(
     except Exception as erro:
         conexao.rollback()
         raise HTTPException(status_code=500, detail=str(erro))
+    finally:
+        cursor.close()
+        conexao.close()
+
+
+@app.get("/pagamentos/{pagamento_id}/recebimentos")
+def historico_recebimentos(pagamento_id: int):
+    conexao = conectar_banco()
+    cursor = conexao.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id, pagamento_id, valor_recebido, data_hora_recebimento,
+                   usuario_recebedor_id, nome_usuario, metodo_pagamento,
+                   observacoes
+            FROM pagamento_recebimento
+            WHERE pagamento_id = %s
+            ORDER BY data_hora_recebimento, id
+            """,
+            (pagamento_id,)
+        )
+        return [linha_para_dict(cursor, linha) for linha in cursor.fetchall()]
     finally:
         cursor.close()
         conexao.close()

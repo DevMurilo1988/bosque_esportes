@@ -249,6 +249,7 @@
     justify-content: space-between;
 
     align-items: center;
+    gap: 1rem;
 
     border-top:
         1px solid var(--border-glass);
@@ -258,9 +259,19 @@
 
 
 .price {
+    display: grid;
+    gap: 0.2rem;
     font-weight: 600;
 
     font-size: 0.9rem;
+}
+
+.price span {
+    display: block;
+}
+
+.biome-footer .btn-action {
+    flex: 0 0 auto;
 }
 
 .home-hero {
@@ -465,7 +476,7 @@
    RESPONSIVIDADE
 ================================================== */
 
-@media (max-width: 968px) {
+@media (max-width: 768px) {
 
     .biome-grid {
         grid-template-columns: 1fr;
@@ -487,7 +498,7 @@
 }
 
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
 
     .biome-container {
         padding: 6rem 1rem 0;
@@ -525,8 +536,7 @@
 
     .biome-card {
         min-height: 380px;
-
-        padding: 2rem 1.5rem;
+        padding: 1.5rem 1.25rem;
     }
 
 
@@ -534,18 +544,55 @@
         font-size: 1.6rem;
     }
 
+    .biome-card p {
+        margin-bottom: 0.8rem;
+    }
+
     .home-hero {
-        min-height: 430px;
+        min-height: 0;
+        display: flex;
+        align-items: stretch;
+        flex-direction: column;
+        gap: 1rem;
         padding: 2rem 1.35rem;
     }
 
     .home-hero-art {
+        position: relative;
+        inset: auto;
         width: 100%;
-        opacity: 0.24;
+        height: 165px;
+        flex: 0 0 165px;
+        opacity: 0.8;
+        border-radius: 12px;
         clip-path: none;
         background:
             linear-gradient(90deg, #101a24 0%, rgba(16, 26, 36, 0.55) 100%),
             url('/frontend/assets/imagens/praia.avif') center / cover;
+    }
+
+    .home-hero-copy {
+        max-width: 100%;
+        padding-right: 0;
+    }
+
+    .home-hero h1 {
+        max-width: 18ch;
+        font-size: clamp(2rem, 8vw, 2.8rem);
+    }
+
+    .home-hero p {
+        max-width: 38ch;
+    }
+
+    .biome-footer {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .biome-footer .btn-action {
+        align-self: flex-start;
     }
 
     .home-hero p {

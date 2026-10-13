@@ -201,4 +201,22 @@ CREATE TABLE IF NOT EXISTS `usuario_admin` (
   UNIQUE KEY `uk_usuario_admin` (`usuario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `pagamento_recebimento` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `pagamento_id` bigint NOT NULL,
+  `valor_recebido` decimal(10,2) NOT NULL,
+  `data_hora_recebimento` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `usuario_recebedor_id` int DEFAULT NULL,
+  `nome_usuario` varchar(100) NOT NULL,
+  `metodo_pagamento` varchar(30) NOT NULL,
+  `observacoes` text,
+  PRIMARY KEY (`id`),
+  KEY `idx_pagamento_recebimento_data` (`data_hora_recebimento`),
+  KEY `idx_pagamento_recebimento_pagamento` (`pagamento_id`,`data_hora_recebimento`),
+  CONSTRAINT `fk_pagamento_recebimento_pagamento`
+    FOREIGN KEY (`pagamento_id`) REFERENCES `pagamento` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pagamento_recebimento_usuario`
+    FOREIGN KEY (`usuario_recebedor_id`) REFERENCES `usuario_admin` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 SET FOREIGN_KEY_CHECKS=1;
