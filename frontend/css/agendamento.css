@@ -1,7 +1,7 @@
 .dashboard-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto;
+    grid-template-columns: minmax(350px, 390px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     min-height: 100vh;
     padding-top: 5rem;
 }
@@ -27,41 +27,21 @@
 }
 
 .sidebar-booking {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 0.8rem;
-    width: min(100%, 1040px);
     min-width: 0;
     min-height: 0;
-    margin: 0 auto;
-    padding: 1rem clamp(1.25rem, 4vw, 3.5rem) 2rem;
+    padding: 1.25rem 1.35rem 1.4rem;
     background: var(--bg-card);
-    border-top: 1px solid var(--border-glass);
+    border-right: 1px solid var(--border-glass);
     backdrop-filter: blur(20px);
 }
 
-.sidebar-heading,
-.booking-selection,
-.schedule-group,
-.btn-primary {
-    grid-column: 1 / -1;
-}
-
 .booking-selection {
-    position: absolute;
-    z-index: 4;
-    top: 1.15rem;
-    right: 1.15rem;
-    left: 1.15rem;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 0.85rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 14px;
-    background: rgba(9, 13, 22, 0.58);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
-    backdrop-filter: blur(16px) saturate(135%);
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 0.7rem;
 }
 
 .sidebar-heading {
@@ -83,16 +63,6 @@
     border-radius: 50%;
     background: var(--color-sintetico);
     box-shadow: 0 0 12px rgba(0, 255, 102, 0.65);
-}
-
-.booking-selection {
-    display: grid;
-    gap: 0.7rem;
-}
-
-.booking-selection .form-group label {
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 .form-group {
@@ -126,22 +96,6 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.booking-selection .input-control {
-    height: 46px;
-    border-color: rgba(255, 255, 255, 0.24);
-    color: #fff;
-    background: rgba(9, 13, 22, 0.72);
-}
-
-.booking-selection .input-control:focus {
-    border-color: var(--court-accent, var(--color-sintetico));
-    box-shadow: 0 0 0 3px color-mix(
-        in srgb,
-        var(--court-accent, var(--color-sintetico)) 22%,
-        transparent
-    );
-}
-
 .booking-contact-note {
     margin: -0.35rem 0 0;
     color: var(--text-muted);
@@ -165,8 +119,6 @@
 }
 
 .schedule-group {
-    width: min(100%, 760px);
-    margin: 0 auto;
     gap: 0.45rem;
 }
 
@@ -266,8 +218,6 @@
 }
 
 .booking-summary {
-    width: min(100%, 760px);
-    margin: 0 auto;
     flex-shrink: 0;
     padding: 0.7rem 0.8rem;
     border: 1px solid var(--border-glass);
@@ -309,8 +259,6 @@
 }
 
 .customer-data {
-    width: min(100%, 760px);
-    margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.6rem;
@@ -329,9 +277,7 @@
 
 .btn-primary {
     width: 100%;
-    max-width: 760px;
     min-height: 46px;
-    margin: 0 auto;
     flex-shrink: 0;
     padding: 0.75rem 1rem;
     border: 0;
@@ -359,15 +305,10 @@
 .booking-content {
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    gap: clamp(0.8rem, 2vh, 1.25rem);
+    justify-content: center;
+    gap: clamp(1.25rem, 3vh, 2rem);
     min-width: 0;
-    padding: 1.4rem clamp(1.25rem, 4vw, 3.5rem);
-    order: 0;
-}
-
-.sidebar-booking {
-    order: 1;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
 }
 
 .content-intro {
@@ -387,8 +328,9 @@
     --court-accent: var(--color-sintetico);
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
     width: min(100%, 1040px);
+    min-height: 300px;
     margin: 0 auto;
     overflow: hidden;
     border: 1px solid var(--border-glass);
@@ -412,7 +354,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 390px;
+    min-height: 300px;
     overflow: hidden;
     background:
         radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--court-accent) 23%, transparent), transparent 65%),
@@ -420,34 +362,10 @@
 }
 
 .map-tag {
-    top: 50%;
-    right: auto;
-    left: 50%;
-    z-index: 3;
-    transform: translate(-50%, -50%);
-}
-
-.court-visual .price-options {
     position: absolute;
-    z-index: 2;
-    right: max(1rem, calc((100% - 540px) / 2));
-    bottom: 1rem;
-    left: max(1rem, calc((100% - 540px) / 2));
-    gap: 0.45rem;
-    margin: 0;
-}
-
-.court-visual .price-card {
-    padding: 0.7rem 0.85rem;
-    border-color: color-mix(in srgb, var(--court-accent) 50%, rgba(255, 255, 255, 0.3));
-    background: rgba(9, 13, 22, 0.48);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(14px) saturate(135%);
-}
-
-.court-visual .price-card strong {
-    font-size: clamp(1.05rem, 1.7vw, 1.35rem);
-    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+    z-index: 1;
+    top: 1rem;
+    right: 1rem;
 }
 
 .court-lines {
@@ -473,8 +391,8 @@
     content: "";
     background: linear-gradient(
         180deg,
-        rgba(9, 13, 22, 0.02),
-        rgba(9, 13, 22, 0.24)
+        rgba(9, 13, 22, 0.08),
+        rgba(9, 13, 22, 0.48)
     );
     pointer-events: none;
 }
@@ -589,6 +507,12 @@
     margin-top: 0.75rem;
 }
 
+.price-options.is-mobile-position {
+    margin: 0;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border-glass);
+}
+
 .price-card {
     display: grid;
     gap: 0.16rem;
@@ -636,29 +560,50 @@
 }
 
 @media (max-width: 1100px) {
+    .dashboard-layout {
+        grid-template-columns: minmax(330px, 370px) minmax(0, 1fr);
+    }
+
     .booking-content {
-        padding: 1.25rem clamp(1rem, 3vw, 2rem);
+        padding: 1.5rem;
+    }
+
+    .spatial-card {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    }
+
+    .court-visual {
+        min-height: 280px;
     }
 }
 
 @media (max-width: 900px) {
     .dashboard-layout {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto auto;
+        grid-template-rows: auto 1fr;
         min-height: 100vh;
         padding-top: 5rem;
     }
 
     .sidebar-booking {
-        grid-template-columns: minmax(0, 1fr);
         gap: 0.9rem;
         padding: 1.25rem clamp(1rem, 4vw, 2rem);
+        border-right: 0;
+        border-bottom: 1px solid var(--border-glass);
     }
 
     .booking-content {
-        gap: 0.8rem;
+        gap: 1.5rem;
+        padding: clamp(1.25rem, 4vw, 2.5rem);
     }
 
+    .booking-selection {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .spatial-card {
+        grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.2fr);
+    }
 }
 
 @media (max-width: 620px) {
@@ -675,6 +620,7 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         gap: 0.8rem;
+        overflow-x: clip;
     }
 
     .sidebar-booking,
@@ -683,13 +629,20 @@
     }
 
     .content-intro {
-        order: 0;
-        padding: 0 1rem;
+        display: none;
     }
 
     .spatial-card {
+        display: block;
+        width: auto;
+        min-width: 0;
+        margin: 0 0.75rem;
         order: 1;
-        margin: 0 1rem;
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     .sidebar-heading {
@@ -697,10 +650,9 @@
         padding: 0 1rem;
     }
 
-    .schedule-group,
-    .booking-summary,
     .customer-data {
-        margin: 0 1rem;
+        order: 3;
+        margin: 0;
         padding: 0.85rem;
         border: 1px solid var(--border-glass);
         border-radius: 10px;
@@ -708,31 +660,49 @@
     }
 
     .btn-primary {
-        order: 6;
-        width: auto;
-        margin: 0 1rem;
-    }
-
-    .booking-selection {
-        top: 0.75rem;
-        right: 0.75rem;
-        left: 0.75rem;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0.55rem;
-        padding: 0.65rem;
-        border-radius: 12px;
-    }
-
-    .schedule-group {
-        order: 3;
-    }
-
-    .booking-summary {
         order: 4;
+        width: auto;
+        margin: 0;
     }
 
-    .customer-data {
-        order: 5;
+    .court-visual {
+        min-height: 440px;
+        border: 1px solid var(--border-glass);
+        border-radius: 16px;
+        background:
+            radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--court-accent) 23%, transparent), transparent 65%),
+            linear-gradient(145deg, #1b2730, #10161d);
+        isolation: isolate;
+    }
+
+    .court-visual .booking-selection {
+        position: absolute;
+        z-index: 4;
+        top: 0.65rem;
+        right: 0.65rem;
+        left: 0.65rem;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 0.45rem;
+        max-width: none;
+        padding: 0.6rem;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 12px;
+        background: rgba(9, 13, 22, 0.62);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(14px);
+    }
+
+    .court-visual .booking-selection .form-group label {
+        color: #fff;
+        font-size: 0.6rem;
+    }
+
+    .court-visual .booking-selection .input-control {
+        height: 42px;
+        padding: 0.45rem;
+        border-color: rgba(255, 255, 255, 0.24);
+        background: rgba(9, 13, 22, 0.76);
+        font-size: 0.75rem;
     }
 
     .input-control {
@@ -740,17 +710,79 @@
         font-size: 0.8rem;
     }
 
-    #container-horarios {
-        grid-auto-rows: 38px;
-        height: 138px;
-        min-height: 138px;
-        max-height: 138px;
-        gap: 0.4rem;
+    .court-visual .map-tag {
+        top: 37%;
+        right: auto;
+        left: 50%;
+        transform: translateX(-50%);
     }
 
-    .slot {
-        height: 38px;
-        font-size: 0.78rem;
+    .court-visual .schedule-group {
+        position: absolute;
+        z-index: 4;
+        right: 0.65rem;
+        bottom: 0.65rem;
+        left: 0.65rem;
+        width: auto;
+        margin: 0;
+        padding: 0.65rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        background: rgba(9, 13, 22, 0.58);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+        backdrop-filter: blur(12px);
+    }
+
+    .court-visual .schedule-heading span {
+        color: rgba(255, 255, 255, 0.82);
+    }
+
+    .court-visual #container-horarios {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-rows: 34px;
+        height: 120px;
+        min-height: 120px;
+        max-height: 120px;
+        gap: 0.35rem;
+        padding: 2px;
+    }
+
+    .court-visual .slot {
+        height: 34px;
+        border-color: rgba(255, 255, 255, 0.3);
+        color: #fff;
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(6px);
+        font-size: 0.75rem;
+    }
+
+    .court-visual .slot:hover:not(.disabled) {
+        border-color: var(--color-sintetico);
+        background: rgba(0, 255, 102, 0.2);
+    }
+
+    .court-visual .slot.active {
+        border-color: var(--color-sintetico);
+        color: #07110b;
+        background: var(--color-sintetico);
+    }
+
+    .court-visual .schedule-empty {
+        padding: 0.4rem;
+        border-color: rgba(255, 255, 255, 0.25);
+        color: #fff;
+        font-size: 0.68rem;
+    }
+
+    .spatial-card > .price-options {
+        margin: 0.55rem 0 0;
+        padding: 0.65rem 0;
+        border: 0;
+    }
+
+    .spatial-card > .price-options .price-card {
+        padding: 0.6rem;
+        background: color-mix(in srgb, var(--court-accent) 8%, var(--bg-dark));
     }
 
     .customer-data {
@@ -761,38 +793,16 @@
         grid-column: 1;
     }
 
-    .court-visual {
-        min-height: 410px;
-    }
-
-    .court-visual .price-options {
-        right: 0.75rem;
-        bottom: 0.75rem;
-        left: 0.75rem;
-    }
-
-    .court-visual .price-card {
-        padding: 0.55rem 0.6rem;
-    }
-
-    .court-visual .price-card > span {
-        font-size: 0.52rem;
-    }
-
-    .court-visual .price-card strong {
-        font-size: 1rem;
-    }
-
-    .map-tag {
-        top: 59%;
-    }
-
     .court-lines {
         inset: 12% 18%;
     }
 
     .spatial-details {
-        padding: 1.1rem;
+        margin-top: 0.85rem;
+        padding: 1rem;
+        border: 1px solid var(--border-glass);
+        border-radius: 12px;
+        background: var(--bg-card);
     }
 
 }

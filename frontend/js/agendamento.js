@@ -24,9 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const containerHorarios =
         document.getElementById('container-horarios');
 
-    const elementoHorario =
-        document.getElementById('display-horario');
-
     const elementoPreco =
         document.getElementById('display-preco');
 
@@ -54,6 +51,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const imagemQuadra =
         document.getElementById('display-imagem-quadra');
 
+    const selecaoReserva =
+        document.querySelector('.booking-selection');
+
+    const grupoHorarios =
+        document.querySelector('.schedule-group');
+
+    const opcoesPreco =
+        document.querySelector('.price-options');
+
+    const visualQuadra =
+        document.querySelector('.court-visual');
+
+    const detalhesQuadra =
+        document.querySelector('.spatial-details');
+
+    const paisOriginais = [
+        {
+            elemento: selecaoReserva,
+            pai: selecaoReserva.parentElement,
+            proximo: selecaoReserva.nextElementSibling
+        },
+        {
+            elemento: grupoHorarios,
+            pai: grupoHorarios.parentElement,
+            proximo: grupoHorarios.nextElementSibling
+        },
+        {
+            elemento: opcoesPreco,
+            pai: opcoesPreco.parentElement,
+            proximo: opcoesPreco.nextElementSibling
+        }
+    ];
+
     const inputNome =
         document.getElementById('input-nome');
 
@@ -75,6 +105,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let mensalidades = [];
     let agendamentos = [];
     let atualizandoAgendamentos = false;
+
+    ajustarLayoutResponsivo();
+    window.addEventListener('resize', ajustarLayoutResponsivo);
+
+
+    function ajustarLayoutResponsivo() {
+
+        if (window.matchMedia('(max-width: 620px)').matches) {
+            visualQuadra.appendChild(selecaoReserva);
+            visualQuadra.appendChild(grupoHorarios);
+            cartaoQuadra.insertBefore(opcoesPreco, detalhesQuadra);
+            opcoesPreco.classList.add('is-mobile-position');
+            return;
+        }
+
+        [...paisOriginais].reverse().forEach(({ elemento, pai, proximo }) => {
+            pai.insertBefore(
+                elemento,
+                proximo && proximo.parentElement === pai
+                    ? proximo
+                    : null
+            );
+        });
+        opcoesPreco.classList.remove('is-mobile-position');
+    }
 
 
     // ==================================================
@@ -495,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function limparResumoQuadra() {
 
-        elementoHorario.textContent = '—';
         elementoTituloQuadra.textContent = 'Conheça nosso espaço';
         elementoTipoQuadra.textContent = 'Modalidade';
         elementoMedidasQuadra.textContent =
@@ -822,7 +876,6 @@ document.addEventListener('DOMContentLoaded', () => {
         containerHorarios.innerHTML = '';
 
         horarioSelecionado = null;
-        elementoHorario.textContent = '—';
 
 
         if (
@@ -1063,7 +1116,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ) {
 
                 horarioSelecionado = textoHorario;
-                elementoHorario.textContent = textoHorario;
                 horario.classList.add('active');
                 botaoSelecionado = horario;
 
@@ -1089,8 +1141,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
                     horarioSelecionado =
-                        textoHorario;
-                    elementoHorario.textContent =
                         textoHorario;
                     atualizarStatusReserva();
 
