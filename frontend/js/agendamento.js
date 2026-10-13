@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const resumoSelecao =
         document.querySelector('.booking-summary-mobile');
 
+    const dadosCliente =
+        document.querySelector('.customer-data');
+
     const visualQuadra =
         document.querySelector('.court-visual');
 
@@ -103,6 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
             elemento: btnAvancar,
             pai: btnAvancar.parentElement,
             proximo: btnAvancar.nextElementSibling
+        },
+        {
+            elemento: dadosCliente,
+            pai: dadosCliente.parentElement,
+            proximo: dadosCliente.nextElementSibling
         }
     ];
 
@@ -137,8 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
             visualQuadra.appendChild(selecaoReserva);
             visualQuadra.appendChild(grupoHorarios);
             visualQuadra.appendChild(opcoesPreco);
-            cartaoQuadra.insertBefore(resumoSelecao, detalhesQuadra);
-            cartaoQuadra.insertBefore(btnAvancar, detalhesQuadra);
+            cartaoQuadra.appendChild(dadosCliente);
+            cartaoQuadra.appendChild(btnAvancar);
+            cartaoQuadra.appendChild(resumoSelecao);
+            cartaoQuadra.appendChild(detalhesQuadra);
             return;
         }
 
