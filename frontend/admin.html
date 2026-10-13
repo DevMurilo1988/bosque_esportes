@@ -14,7 +14,7 @@
 
     <link
         rel="stylesheet"
-        href="/frontend/css/admin.css?v=8"
+        href="/frontend/css/admin.css?v=9"
     >
 
 </head>
@@ -164,6 +164,19 @@
 
         <nav class="admin-menu">
 
+            <label class="admin-menu-label" for="admin-section-select">
+                Seção
+            </label>
+            <select id="admin-section-select" aria-label="Seção do painel">
+                <option value="agendamentos">Agendamentos</option>
+                <option value="mensalistas">Mensalistas</option>
+                <option value="pagamentos">Pagamentos</option>
+                <option value="relatorios">Relatórios</option>
+                <option value="clientes">Clientes</option>
+                <option value="quadras">Quadras</option>
+                <option value="configuracoes">Configurações</option>
+                <option value="usuarios">Usuários admin</option>
+            </select>
 
             <button
                 class="menu-btn active"
@@ -274,7 +287,7 @@
                     <button id="btn-atualizar-jogos-dia" type="button">Atualizar jogos</button>
                 </div>
                 <div class="tabela-container day-games-table">
-                    <table>
+                    <table class="day-games-cards">
                         <thead>
                             <tr>
                                 <th>Horário</th>
@@ -624,6 +637,16 @@
                 </div>
             </div>
             <nav class="report-tabs" aria-label="Seções do dashboard">
+                <label class="report-tabs-label" for="report-section-select">
+                    Painel
+                </label>
+                <select id="report-section-select" aria-label="Seção dos relatórios">
+                    <option value="overview">Visão Geral</option>
+                    <option value="demand">Demanda</option>
+                    <option value="finance">Financeiro</option>
+                    <option value="customers">Clientes</option>
+                    <option value="members">Mensalistas</option>
+                </select>
                 <button type="button" class="report-tab active" data-report-tab="overview">Visão Geral</button>
                 <button type="button" class="report-tab" data-report-tab="demand">Demanda</button>
                 <button type="button" class="report-tab" data-report-tab="finance">Financeiro</button>
@@ -1350,7 +1373,7 @@
 
     </div>
 
-    <script src="/frontend/js/admin.js?v=8"></script>
+    <script src="/frontend/js/admin.js?v=9"></script>
 
 </body>
 

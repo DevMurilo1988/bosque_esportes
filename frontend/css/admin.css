@@ -189,27 +189,19 @@ body {
 }
 
 .report-tabs {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
     margin: 20px 0 0;
-    padding: 0 18px;
-    border-bottom: 1px solid #303640;
+    padding: 10px 18px;
+    border: 1px solid #303640;
+    border-radius: 10px;
+    background: #181b20;
 }
 
 .report-tab {
-    flex: 0 0 auto;
-    padding: 11px 16px;
-    color: #b8bec7;
-    background: transparent;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-}
-
-.report-tab.active {
-    color: #38c172;
-    border-bottom-color: #38c172;
+    display: none;
 }
 
 .report-pane {
@@ -572,15 +564,38 @@ body {
 /* ========================= */
 
 .admin-menu {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
     margin-bottom: 25px;
-
     background: #181b20;
     border: 1px solid #292d34;
     border-radius: 12px;
+    padding: 10px 14px;
+}
 
-    padding: 8px;
+.admin-menu-label,
+.report-tabs-label {
+    color: #9da3ab;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+#admin-section-select,
+#report-section-select {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 1px solid #343a43;
+    border-radius: 8px;
+    color: #fff;
+    background: #101419;
+    font: inherit;
+}
+
+.admin-menu .menu-btn {
+    display: none;
 }
 
 .menu-btn {
@@ -750,8 +765,8 @@ body {
 }
 
 .day-games-panel {
-    margin: 18px;
-    padding: 18px;
+    margin: 12px 18px;
+    padding: 14px;
     border: 1px solid #303640;
     border-radius: 10px;
     background: #13171d;
@@ -761,12 +776,12 @@ body {
     display: flex;
     align-items: end;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 8px 10px;
+    margin-bottom: 10px;
 }
 
 .day-games-toolbar > div {
-    flex: 1 1 220px;
+    flex: 1 1 180px;
 }
 
 .day-games-toolbar h3 {
@@ -800,6 +815,10 @@ body {
 
 .day-games-table .tabela-container {
     margin: 0;
+}
+
+.day-games-cards tbody td {
+    white-space: normal;
 }
 
 .day-game-actions {
@@ -1533,11 +1552,14 @@ tr:hover td {
     }
 
     .admin-menu {
-        overflow-x: auto;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        margin-bottom: 16px;
+        padding: 10px;
     }
 
-    .menu-btn {
-        white-space: nowrap;
+    .admin-menu-label {
+        font-size: 12px;
     }
 
     .filtros {
@@ -1613,12 +1635,14 @@ tr:hover td {
     }
 
     .report-tabs {
-        margin-top: 14px;
-        padding: 0 10px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        margin-top: 12px;
+        padding: 10px;
     }
 
-    .report-tab {
-        padding: 10px 12px;
+    .report-tabs-label {
+        font-size: 12px;
     }
 
     .report-pane {
@@ -1765,5 +1789,84 @@ tr:hover td {
     .agendamentos-table .status-select,
     .agendamentos-table [data-receber-agendamento] {
         max-width: 100%;
+    }
+
+    .day-games-table table,
+    .day-games-table tbody {
+        display: block;
+        width: 100%;
+    }
+
+    .day-games-table thead {
+        display: none;
+    }
+
+    .day-games-table tbody {
+        display: grid;
+        gap: 8px;
+    }
+
+    .day-games-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+        padding: 10px;
+        border: 1px solid #303640;
+        border-radius: 9px;
+        background: #181b20;
+    }
+
+    .day-games-table tbody td {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 2px 0;
+        border: 0;
+        font-size: 12px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .day-games-table tbody td::before {
+        flex: 0 0 auto;
+        color: #8f969f;
+        content: attr(data-label);
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .day-games-table tbody td:nth-child(2) {
+        grid-column: 1 / -1;
+        display: block;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #303640;
+    }
+
+    .day-games-table tbody td:nth-child(2)::before {
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .day-games-table tbody td:last-child {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: center;
+        padding-top: 6px;
+        border-top: 1px solid #303640;
+    }
+
+    .day-games-table tbody td:last-child::before {
+        grid-column: 1 / -1;
+    }
+
+    .day-game-actions a,
+    .day-game-actions button {
+        justify-content: center;
+        min-height: 34px;
+        padding: 5px 6px;
+        font-size: 10px;
     }
 }

@@ -207,6 +207,16 @@ function configurarMenu() {
 
     const botoes =
         document.querySelectorAll('.menu-btn');
+    const seletor =
+        document.getElementById('admin-section-select');
+
+    seletor?.addEventListener('change', () => {
+        const botao = [...botoes].find(
+            item => item.dataset.section === seletor.value &&
+                !item.hidden
+        );
+        botao?.click();
+    });
 
     botoes.forEach(botao => {
 
@@ -220,6 +230,7 @@ function configurarMenu() {
             });
 
             botao.classList.add('active');
+            if (seletor) seletor.value = secao;
 
             document
                 .querySelectorAll('.admin-section')
@@ -295,6 +306,16 @@ function aplicarPermissoesPainel() {
             : temPermissaoAdmin(modulo);
         botao.hidden = !permitido;
     });
+    document.querySelectorAll('#admin-section-select option').forEach(option => {
+        const botao = [...document.querySelectorAll('.menu-btn')]
+            .find(item => item.dataset.section === option.value);
+        option.hidden = !botao || botao.hidden;
+    });
+    const secaoAtiva = document.querySelector('.menu-btn.active:not([hidden])');
+    const seletorSecao = document.getElementById('admin-section-select');
+    if (secaoAtiva && seletorSecao) {
+        seletorSecao.value = secaoAtiva.dataset.section;
+    }
 
     document.querySelectorAll('.admin-section').forEach(secao => {
         const modulo = secao.id.replace('section-', '');
@@ -903,18 +924,27 @@ function configurarRelatorios() {
             document.getElementById('relatorio-periodo').value = 'custom';
         });
     });
+    const seletorRelatorio = document.getElementById('report-section-select');
+    const ativarAbaRelatorio = nomeAba => {
+        document.querySelectorAll('[data-report-tab]').forEach(tab =>
+            tab.classList.toggle('active', tab.dataset.reportTab === nomeAba)
+        );
+        document.querySelectorAll('[data-report-pane]').forEach(pane => {
+            const active = pane.dataset.reportPane === nomeAba;
+            pane.hidden = !active;
+            pane.classList.toggle('active', active);
+        });
+        if (seletorRelatorio) seletorRelatorio.value = nomeAba;
+    };
     document.querySelectorAll('[data-report-tab]').forEach(button => {
         button.addEventListener('click', () => {
-            document.querySelectorAll('[data-report-tab]').forEach(tab =>
-                tab.classList.toggle('active', tab === button)
-            );
-            document.querySelectorAll('[data-report-pane]').forEach(pane => {
-                const active = pane.dataset.reportPane === button.dataset.reportTab;
-                pane.hidden = !active;
-                pane.classList.toggle('active', active);
-            });
+            ativarAbaRelatorio(button.dataset.reportTab);
         });
     });
+    seletorRelatorio?.addEventListener(
+        'change',
+        () => ativarAbaRelatorio(seletorRelatorio.value)
+    );
     preencherFiltroRelatorio();
 
 }
@@ -1758,15 +1788,15 @@ function configurarAgendamentos() {
                     : `data-mensalidade="${Number(jogo.mensalidade_id)}"`;
                 return `
                     <tr>
-                        <td>${escaparHTML(formatarHorario(jogo.horario))}</td>
-                        <td>${escaparHTML(jogo.cliente)}<br><small>${escaparHTML(jogo.contato || '')}</small></td>
-                        <td>${escaparHTML(jogo.quadra)}</td>
-                        <td>${escaparHTML(jogo.tipo_jogo)}</td>
-                        <td>${escaparHTML(jogo.status)}</td>
-                        <td>${formatarMoeda(pago)} / ${formatarMoeda(total)}</td>
-                        <td>${formatarMoeda(saldo)}</td>
-                        <td>${Number(jogo.total_jogos_cliente || 0)}</td>
-                        <td class="day-game-actions">
+                        <td data-label="Horário">${escaparHTML(formatarHorario(jogo.horario))}</td>
+                        <td data-label="Cliente">${escaparHTML(jogo.cliente)}<br><small>${escaparHTML(jogo.contato || '')}</small></td>
+                        <td data-label="Quadra">${escaparHTML(jogo.quadra)}</td>
+                        <td data-label="Tipo">${escaparHTML(jogo.tipo_jogo)}</td>
+                        <td data-label="Status">${escaparHTML(jogo.status)}</td>
+                        <td data-label="Pago / total">${formatarMoeda(pago)} / ${formatarMoeda(total)}</td>
+                        <td data-label="Falta pagar">${formatarMoeda(saldo)}</td>
+                        <td data-label="Jogos do cliente">${Number(jogo.total_jogos_cliente || 0)}</td>
+                        <td data-label="Atendimento" class="day-game-actions">
                             ${clienteLink} ${responsavelLink}
                             <button type="button" data-receber-jogo ${ref}
                                 data-valor="${total}" data-pago="${pago}"

@@ -24,14 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const containerHorarios =
         document.getElementById('container-horarios');
 
-    const elementoNomeQuadra =
-        document.getElementById('display-nome-quadra');
-
     const elementoHorario =
         document.getElementById('display-horario');
-
-    const elementoNomeVisual =
-        document.getElementById('visual-nome-quadra');
 
     const elementoPreco =
         document.getElementById('display-preco');
@@ -429,12 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        elementoNomeQuadra.textContent =
-            quadraSelecionada.nome;
-
-        elementoNomeVisual.textContent =
-            quadraSelecionada.nome;
-
         elementoTituloQuadra.textContent =
             quadraSelecionada.nome;
 
@@ -507,9 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function limparResumoQuadra() {
 
-        elementoNomeQuadra.textContent = '—';
         elementoHorario.textContent = '—';
-        elementoNomeVisual.textContent = 'Escolha sua quadra';
         elementoTituloQuadra.textContent = 'Conheça nosso espaço';
         elementoTipoQuadra.textContent = 'Modalidade';
         elementoMedidasQuadra.textContent =
@@ -818,9 +804,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         containerHorarios.innerHTML = '';
 
-
-        elementoNomeQuadra.textContent =
-            '—';
 
         limparResumoQuadra();
         atualizarInstrucaoHorarios();
